@@ -48,7 +48,6 @@ for tilePath in tilePaths:
     i += 1
 
 images = []
-im_vecs = []
 for tile in jp2Paths:
     for file in tile:
         # im = Image.open(file)
@@ -57,23 +56,21 @@ for tile in jp2Paths:
         # data.append(jp2.read(1)) # rasterio
     break  # just get first!! only using on tile currently.
 
-# img_zero = np.array(images[0])
-# fig, ax = plt.subplots(1, 1, figsize=(20, 20))
 images = np.array(images)
 print("IMAGES SHAPE: ", images.shape)
 # THIS gets axis in he proper order, does not create tiled 9x9 image !!!
-images = np.moveaxis(images, 0, -1)
+images = np.moveaxis(images, 0, -1) # (3, a, b) -> (b, a, 3)
+print("IMAGES SHAPE AXIS SWAPPED: ", images.shape)
 
 # plt.imshow(images)
 # plt.show()
 
-vectorized = images.reshape((-1, 3))
-vectorized = np.float32(vectorized)
+vectorized = images.reshape((-1, 3)) # re-shape to get 1D array for each layer (a*b, number of bands)
+print("IMAGES RE-SHAPED: ", vectorized.shape)
 
-print(vectorized.shape)
-# vectorized = np.float32(vectorized)
+vectorized = np.float32(vectorized) # convert to 32 bit float for k-means
 
-attempts = 20
+attempts = 2
 K = 4
 ret, label, center = cv2.kmeans(
     vectorized, 4, None, None, attempts, cv2.KMEANS_PP_CENTERS)
@@ -83,9 +80,9 @@ res = center[label.flatten()]
 # print("RES: ", res.shape)
 # print(images.reshape((images.shape[1], images.shape[2], 3)).shape)
 result_image1 = res.reshape(images.shape)
-print("RES IMG: ", result_image1.shape)
+print("RESULT IMAGE: ", result_image1.shape)
 
-plt.figure(figsize=(1, 1))
+plt.figure(figsize=(10, 10))
 plt.imshow(result_image1)
 
 plt.tight_layout()
