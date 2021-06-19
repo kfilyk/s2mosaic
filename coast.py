@@ -37,6 +37,7 @@ i = 0
 for tilePath in tilePaths:
     print("Tile " + tilePath + " contains jp2s:")
     wildcard = glob.glob(tilePath+"/GRANULE/L*/IMG_DATA/R60m/")
+    # wildcard = glob.glob("/Users/leohuang/Programming/wet_garbage/maps/S2B_MSIL2A_20210603T102559_N0300_R108_T30NUL_20210603T134234.SAFE/GRANULE/L2A_T30NUL_A022156_20210603T103702/IMG_DATA/R60m/")
     for BandPath in wildcard:  # Should return a single file path to the 10m band directory
         # print(tenMeterBandDirectoryPath)
         for file in os.listdir(BandPath):
@@ -68,12 +69,12 @@ print("IMAGES SHAPE AXIS SWAPPED: ", images.shape)
 vectorized = images.reshape((-1, 3)) # re-shape to get 1D array for each layer (a*b, number of bands)
 print("IMAGES RE-SHAPED: ", vectorized.shape)
 
-vectorized = np.float32(vectorized) # convert to 32 bit float for k-means
+vectorized = np.float32(vectorized) # convert to 32 bit float for K-Means
 
-attempts = 2
-K = 4
-ret, label, center = cv2.kmeans(
-    vectorized, 4, None, None, attempts, cv2.KMEANS_PP_CENTERS)
+#------------------------- Clustering through K-Means
+attempts = 20
+K = 10
+ret, label, center = cv2.kmeans(vectorized, K, None, None, attempts, cv2.KMEANS_PP_CENTERS)
 
 center = np.uint8(center)
 res = center[label.flatten()]
@@ -82,12 +83,40 @@ res = center[label.flatten()]
 result_image1 = res.reshape(images.shape)
 print("RESULT IMAGE: ", result_image1.shape)
 
-plt.figure(figsize=(10, 10))
-plt.imshow(result_image1)
-
+# Show K-Means image
+clusteredImgFig, clusteredImgAx = plt.subplots(1,1,figsize=(10,10))
+clusteredImgAx.imshow(result_image1,  cmap="tab20_r")
+clusteredImgAx.set_title("K-Means Image")
 plt.tight_layout()
 plt.savefig('clusters.png')
+
+#------------------------- Blur Images
+blurredImg = cv2.GaussianBlur(result_image1, (15,15), 0)
+
+# Show blur image
+blurredImgFig, blurredImgAx = plt.subplots(1,1,figsize=(10,10))
+blurredImgAx.set_title("Blurred Image")
+blurredImgAx.imshow(blurredImg)
+plt.savefig('blurred.png')
+
+#------------------------- Edge detecting with Canny
+rawEdge = cv2.Canny(blurredImg, 2, 5)
+print("RAWEDGE SHAPE: ", rawEdge.shape)
+print("RAWEDGE: ", rawEdge)
+rawEdge = np.float32(rawEdge)
+
+# Show edge images
+rawEdgeImf, rawEdgeImgax = plt.subplots(1,1,figsize=(10,10))
+rawEdgeImgax.set_title("Raw Edge Img")
+rawEdgeImgax.imshow(rawEdge, cmap = 'Set3_r')
+plt.savefig('rawedge.png')
+
+
+
+
+
 plt.show()
+
 
 
 # this implementation using sklearn probably still works; just switched to cv2 for testing
