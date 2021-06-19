@@ -73,9 +73,10 @@ vectorized = np.float32(vectorized)
 print(vectorized.shape)
 # vectorized = np.float32(vectorized)
 
-attempts = 2
+attempts = 20
+K = 4
 ret, label, center = cv2.kmeans(
-    vectorized, 3, None, None, attempts, cv2.KMEANS_PP_CENTERS)
+    vectorized, 4, None, None, attempts, cv2.KMEANS_PP_CENTERS)
 
 center = np.uint8(center)
 res = center[label.flatten()]
