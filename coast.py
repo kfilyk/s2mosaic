@@ -8,6 +8,8 @@ import rasterio
 import cv2  # pip install opencv-contrib-python
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
+import matplotlib.image as mpimg
+import matplotlib as mpl
 import pickle
 
 N_OPTICS_BANDS = 4
@@ -37,7 +39,7 @@ i = 0
 for tilePath in tilePaths:
     print("Tile " + tilePath + " contains jp2s:")
     wildcard = glob.glob(tilePath+"/GRANULE/L*/IMG_DATA/R60m/")
-    # wildcard = glob.glob("/Users/leohuang/Programming/wet_garbage/maps/S2B_MSIL2A_20210603T102559_N0300_R108_T30NUL_20210603T134234.SAFE/GRANULE/L2A_T30NUL_A022156_20210603T103702/IMG_DATA/R60m/")
+    # wildcard = glob.glob("/GRANULE/L2A_T30NUL_A022156_20210603T103702/IMG_DATA/R60m/")
     for BandPath in wildcard:  # Should return a single file path to the 10m band directory
         # print(tenMeterBandDirectoryPath)
         for file in os.listdir(BandPath):
@@ -72,26 +74,27 @@ print("IMAGES RE-SHAPED: ", vectorized.shape)
 vectorized = np.float32(vectorized) # convert to 32 bit float for K-Means
 
 #------------------------- Clustering through K-Means
-attempts = 20
-K = 10
+attempts = 10
+K = 4
 ret, label, center = cv2.kmeans(vectorized, K, None, None, attempts, cv2.KMEANS_PP_CENTERS)
 
 center = np.uint8(center)
 res = center[label.flatten()]
 # print("RES: ", res.shape)
 # print(images.reshape((images.shape[1], images.shape[2], 3)).shape)
-result_image1 = res.reshape(images.shape)
-print("RESULT IMAGE: ", result_image1.shape)
+clusterImg = res.reshape(images.shape)
+print("RESULT IMAGE: ", clusterImg.shape)
 
 # Show K-Means image
 clusteredImgFig, clusteredImgAx = plt.subplots(1,1,figsize=(10,10))
-clusteredImgAx.imshow(result_image1,  cmap="tab20_r")
+clusteredImgAx.imshow(clusterImg,  cmap="tab20_r")
 clusteredImgAx.set_title("K-Means Image")
 plt.tight_layout()
 plt.savefig('clusters.png')
 
 #------------------------- Blur Images
-blurredImg = cv2.GaussianBlur(result_image1, (15,15), 0)
+blurredImg = cv2.GaussianBlur(clusterImg, (15,15), 0)
+print("BLURRED IMG SHAPE:", blurredImg.shape)
 
 # Show blur image
 blurredImgFig, blurredImgAx = plt.subplots(1,1,figsize=(10,10))
@@ -100,19 +103,43 @@ blurredImgAx.imshow(blurredImg)
 plt.savefig('blurred.png')
 
 #------------------------- Edge detecting with Canny
-rawEdge = cv2.Canny(blurredImg, 2, 5)
-print("RAWEDGE SHAPE: ", rawEdge.shape)
-print("RAWEDGE: ", rawEdge)
-rawEdge = np.float32(rawEdge)
+edge = cv2.Canny(blurredImg, 2, 5).astype("float") # using float here since np.nan requires floating points
+print("EDGE SHAPE: ", edge.shape)
+print("EDGE: ", edge)
+# Not entirely sure why he wanted to replace 0s with "Not a Number" values
+# edge[edge == 0] = np.nan #np.nan only exists with floating-point data types
+edge = np.uint8(edge) # converting back to 8 bit for viewing (0-255)
+# print("EDGE np.nan: ", edge)
+# print("List all indicies that have nan value: ", np.argwhere(np.isnan(edge)))
+
+
+
+# For when we plot edges on rgb image
+bckgndImgPath = "./maps/S2B_MSIL2A_20210603T102559_N0300_R108_T30NTL_20210603T124634.SAFE/GRANULE/L2A_T30NTL_A022156_20210603T104943/IMG_DATA/R60m/T30NTL_20210603T102559_TCI_60m.jp2"
+bckgndImg = mpimg.imread(bckgndImgPath)
+print("OVERLAYBCKGND IMG SHAPE: ", bckgndImg.shape)
+
+
+# Make edge into 3 channel, bgr or rgb image
+rgb = cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB) # RGB for matplotlib, BGR for imshow()
+# Dilate the lines so we can see them clearer on the overlay
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+thicBoiEdgeRGB = cv2.dilate(rgb, kernel, iterations=1)
+# Now all edges are white (255,255,255). to make it red, multiply with another array:
+thicBoiEdgeRGB *= np.array((1,0,0),np.uint8) # Leave R = 1, G, B = 0
+# Overlay
+overlayedImg = np.bitwise_or(bckgndImg, thicBoiEdgeRGB)
+
+
 
 # Show edge images
-rawEdgeImf, rawEdgeImgax = plt.subplots(1,1,figsize=(10,10))
+rawEdgeImg, (rawEdgeImgax, overlayedImgax) = plt.subplots(1, 2, figsize=(14,14))
 rawEdgeImgax.set_title("Raw Edge Img")
-rawEdgeImgax.imshow(rawEdge, cmap = 'Set3_r')
-plt.savefig('rawedge.png')
-
-
-
+rawEdgeImgax.imshow(edge, cmap="binary")
+overlayedImgax.set_title("Overlayed Edge Img")
+overlayedImgax.imshow(overlayedImg, cmap='Set3_r')
+plt.savefig('rawedge_and_overlay')
+# rawEdgeImgax.imshow(rawEdge, cmap=mpl.cm.jet_r, interpolation='nearest')
 
 
 plt.show()
