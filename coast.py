@@ -59,6 +59,12 @@ for tile in jp2Paths:
         # data.append(jp2.read(1)) # rasterio
     break  # just get first!! only using on tile currently.
 
+
+# Uncomment this for testing the mosaic geotif
+# Canny edge settings also seem to work better with 20-25 as arguments
+# Don't forget to comment out the overlay edge to original image code because it isn't implemented yet for geotiffs
+# images = rasterio.open("./retrieved_imagery.tif").read()
+
 images = np.array(images)
 print("IMAGES SHAPE: ", images.shape)
 # THIS gets axis in he proper order, does not create tiled 9x9 image !!!
@@ -133,7 +139,7 @@ overlayedImg = np.bitwise_or(bckgndImg, thicBoiEdgeRGB)
 
 
 # Show edge images
-rawEdgeImg, (rawEdgeImgax, overlayedImgax) = plt.subplots(1, 2, figsize=(14,14))
+rawEdgeImg, (rawEdgeImgax) = plt.subplots(1, 1, figsize=(14,14))
 rawEdgeImgax.set_title("Raw Edge Img")
 rawEdgeImgax.imshow(edge, cmap="binary")
 overlayedImgax.set_title("Overlayed Edge Img")
