@@ -22,7 +22,12 @@ tileFolderPath = "./maps/"
 tilePaths = []
 print("Using Tiles:")
 for tilePath in os.listdir(tileFolderPath):  # Get each directory's file path
+    """
     if '.SAFE' in tilePath:
+        tilePaths.append(tileFolderPath+tilePath)
+        print(tilePath)
+    """
+    if '.png' in tilePath:
         tilePaths.append(tileFolderPath+tilePath)
         print(tilePath)
 print("\n")
@@ -37,7 +42,21 @@ for i in range(len(tilePaths)):
 # For each tile find the jp2 files in
 i = 0
 for tilePath in tilePaths:
+    """
     print("Tile " + tilePath + " contains jp2s:")
+    wildcard = glob.glob(tilePath+"/GRANULE/L*/IMG_DATA/R60m/")
+    # wildcard = glob.glob("/GRANULE/L2A_T30NUL_A022156_20210603T103702/IMG_DATA/R60m/")
+    for BandPath in wildcard:  # Should return a single file path to the 10m band directory
+        # print(tenMeterBandDirectoryPath)
+        for file in os.listdir(BandPath):
+            if '_B02' in file or '_B03' in file or '_B04' in file or '_B08' in file:  # RGB + IR
+                jp2Paths[i].append(BandPath+file)
+                print(BandPath+file)
+
+    print("\n")
+    i += 1
+    """
+    print("Tile " + tilePath + " contains jpgs:")
     wildcard = glob.glob(tilePath+"/GRANULE/L*/IMG_DATA/R60m/")
     # wildcard = glob.glob("/GRANULE/L2A_T30NUL_A022156_20210603T103702/IMG_DATA/R60m/")
     for BandPath in wildcard:  # Should return a single file path to the 10m band directory
@@ -68,21 +87,23 @@ for tile in jp2Paths:
 images = np.array(images)
 print("IMAGES SHAPE: ", images.shape)
 # THIS gets axis in he proper order, does not create tiled 9x9 image !!!
-images = np.moveaxis(images, 0, -1) # (3, a, b) -> (b, a, 3)
+images = np.moveaxis(images, 0, -1)  # (3, a, b) -> (b, a, 3)
 print("IMAGES SHAPE AXIS SWAPPED: ", images.shape)
 
 # plt.imshow(images)
 # plt.show()
 
-vectorized = images.reshape((-1, 3)) # re-shape to get 1D array for each layer (a*b, number of bands)
+# re-shape to get 1D array for each layer (a*b, number of bands)
+vectorized = images.reshape((-1, 3))
 print("IMAGES RE-SHAPED: ", vectorized.shape)
 
-vectorized = np.float32(vectorized) # convert to 32 bit float for K-Means
+vectorized = np.float32(vectorized)  # convert to 32 bit float for K-Means
 
-#------------------------- Clustering through K-Means
+# ------------------------- Clustering through K-Means
 attempts = 10
 K = 4
-ret, label, center = cv2.kmeans(vectorized, K, None, None, attempts, cv2.KMEANS_PP_CENTERS)
+ret, label, center = cv2.kmeans(
+    vectorized, K, None, None, attempts, cv2.KMEANS_PP_CENTERS)
 
 center = np.uint8(center)
 res = center[label.flatten()]
@@ -92,32 +113,32 @@ clusterImg = res.reshape(images.shape)
 print("RESULT IMAGE: ", clusterImg.shape)
 
 # Show K-Means image
-clusteredImgFig, clusteredImgAx = plt.subplots(1,1,figsize=(10,10))
+clusteredImgFig, clusteredImgAx = plt.subplots(1, 1, figsize=(10, 10))
 clusteredImgAx.imshow(clusterImg,  cmap="tab20_r")
 clusteredImgAx.set_title("K-Means Image")
 plt.tight_layout()
 plt.savefig('clusters.png')
 
-#------------------------- Blur Images
-blurredImg = cv2.GaussianBlur(clusterImg, (15,15), 0)
+# ------------------------- Blur Images
+blurredImg = cv2.GaussianBlur(clusterImg, (15, 15), 0)
 print("BLURRED IMG SHAPE:", blurredImg.shape)
 
 # Show blur image
-blurredImgFig, blurredImgAx = plt.subplots(1,1,figsize=(10,10))
+blurredImgFig, blurredImgAx = plt.subplots(1, 1, figsize=(10, 10))
 blurredImgAx.set_title("Blurred Image")
 blurredImgAx.imshow(blurredImg)
 plt.savefig('blurred.png')
 
-#------------------------- Edge detecting with Canny
-edge = cv2.Canny(blurredImg, 2, 5).astype("float") # using float here since np.nan requires floating points
+# ------------------------- Edge detecting with Canny
+# using float here since np.nan requires floating points
+edge = cv2.Canny(blurredImg, 2, 5).astype("float")
 print("EDGE SHAPE: ", edge.shape)
 print("EDGE: ", edge)
 # Not entirely sure why he wanted to replace 0s with "Not a Number" values
 # edge[edge == 0] = np.nan #np.nan only exists with floating-point data types
-edge = np.uint8(edge) # converting back to 8 bit for viewing (0-255)
+edge = np.uint8(edge)  # converting back to 8 bit for viewing (0-255)
 # print("EDGE np.nan: ", edge)
 # print("List all indicies that have nan value: ", np.argwhere(np.isnan(edge)))
-
 
 
 # For when we plot edges on rgb image
@@ -127,19 +148,19 @@ print("OVERLAYBCKGND IMG SHAPE: ", bckgndImg.shape)
 
 
 # Make edge into 3 channel, bgr or rgb image
-rgb = cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB) # RGB for matplotlib, BGR for imshow()
+# RGB for matplotlib, BGR for imshow()
+rgb = cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB)
 # Dilate the lines so we can see them clearer on the overlay
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
 thicBoiEdgeRGB = cv2.dilate(rgb, kernel, iterations=1)
 # Now all edges are white (255,255,255). to make it red, multiply with another array:
-thicBoiEdgeRGB *= np.array((1,0,0),np.uint8) # Leave R = 1, G, B = 0
+thicBoiEdgeRGB *= np.array((1, 0, 0), np.uint8)  # Leave R = 1, G, B = 0
 # Overlay
 overlayedImg = np.bitwise_or(bckgndImg, thicBoiEdgeRGB)
 
 
-
 # Show edge images
-rawEdgeImg, (rawEdgeImgax) = plt.subplots(1, 1, figsize=(14,14))
+rawEdgeImg, (rawEdgeImgax) = plt.subplots(1, 1, figsize=(14, 14))
 rawEdgeImgax.set_title("Raw Edge Img")
 rawEdgeImgax.imshow(edge, cmap="binary")
 overlayedImgax.set_title("Overlayed Edge Img")
@@ -149,7 +170,6 @@ plt.savefig('rawedge_and_overlay')
 
 
 plt.show()
-
 
 
 # this implementation using sklearn probably still works; just switched to cv2 for testing
