@@ -130,22 +130,18 @@ for s in sites:
 
                 for m in range(0, len(raw_maps)):
                     map = raw_maps[m] 
+                    map[:, :, 4] = gaussian_filter(map[:, :, 4], sigma=3)
+                    for idx, x in np.ndenumerate(map[:, :, 4]):
+                        if map[idx[0], idx[1], 4] > 0: # if non-zero, indicates some presence of clouds
+                            map[idx[0], idx[1], 0] = 0
+                            map[idx[0], idx[1], 1] = 0
+                            map[idx[0], idx[1], 2] = 0
+                            map[idx[0], idx[1], 3] = 0
                     for i in range(0, 5):  # R, G, B, IR all need to be normalized
-                        if i==4:
-                            map[:, :, i] = gaussian_filter(map[:, :, i], sigma=3)
-                            for idx, x in np.ndenumerate(map[:, :, i]):
-                                if map[idx[0], idx[1], i] > 0: # if non-zero, indicates some presence of clouds
-                                    map[idx[0], idx[1], 0] = 0
-                                    map[idx[0], idx[1], 1] = 0
-                                    map[idx[0], idx[1], 2] = 0
-                                    map[idx[0], idx[1], 3] = 0
-                            """
-                            min = np.amin(map[:, :, i]) # i==4 has range between 0-100
-                            map[:, :, i] -= min  # center min = 0
-                            max = np.amax(map[:, :, i])
-                            map[:, :, i] *= (255/max) # converts to range 0, 255
-                            """
-
+                        min = np.amin(map[:, :, i]) # i==4 has range between 0-100
+                        map[:, :, i] -= min  # center min = 0
+                        max = np.amax(map[:, :, i])
+                        map[:, :, i] *= (255/max) # converts to range 0, 255
 
                     maps[m] = map
                     map = map.astype(np.uint8) # convert to int8
