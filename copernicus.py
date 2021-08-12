@@ -8,9 +8,11 @@ import zipfile
 # connect to the API
 api = sentinelsat.SentinelAPI('kfilyk', 'wet_garbage')
 
-
-tiles = ['30NVL', '30NUL', '30NTL']
+tiles = ['30NVL', '30NUL', '30NTL', '10UDV', '10UEV', '10UDU', '10UEU', '51RUH', '51RTH', '51RUJ','51RTJ', '48QXH', '48QYJ']
 #  ghana : 30VNL, 30NUL, 30NTL
+# vancouver/victoria 10UDV, 10UEV, 10UDU, 10UEU
+# taiwan: 51RUH, 51RTH, 51RUJ, 51RTJ
+# vietnam (hanoi): 48QXH, 48QYJ
 
 query_kwargs = {
     'platformname': 'Sentinel-2',

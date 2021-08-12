@@ -1,7 +1,3 @@
-maps/S2A*
-maps/S2B*
-maps/*.SAFE
-maps/*/*.SAFE
 .DS_Store
 **/.DS_Store
 maps/*
