@@ -49,24 +49,24 @@ for tile in tiles:
     print("#3. %s: %d" % (least_clouds_3_id, least_clouds_3))
 
     # we have top 3 cloudless days for each tile in 'tiles' list: download to its own folder
-    if not os.path.exists('./'+tile+"/"+pp[least_clouds_1_id]['title']+'.SAFE'):
+    if not os.path.exists('./maps/'+tile+"/"+pp[least_clouds_1_id]['title']+'.SAFE'):
         print(pp[least_clouds_1_id]['title'] +
               " doesn't exist yet. Downloading...")
-        api.download(least_clouds_1_id, './'+tile)
+        api.download(least_clouds_1_id, './maps/'+tile)
     else:
         print(pp[least_clouds_1_id]['title']+" already exists.")
 
-    if not os.path.exists('./'+tile+"/"+pp[least_clouds_2_id]['title']+'.SAFE'):
+    if not os.path.exists('./maps/'+tile+"/"+pp[least_clouds_2_id]['title']+'.SAFE'):
         print(pp[least_clouds_2_id]['title'] +
               " doesn't exist yet. Downloading...")
-        api.download(least_clouds_2_id, './'+tile)
+        api.download(least_clouds_2_id, './maps/'+tile)
     else:
         print(pp[least_clouds_2_id]['title']+" already exists.")
 
-    if not os.path.exists('./'+tile+"/"+pp[least_clouds_3_id]['title']+'.SAFE'):
+    if not os.path.exists('./maps/'+tile+"/"+pp[least_clouds_3_id]['title']+'.SAFE'):
         print(pp[least_clouds_3_id]['title'] +
               " doesn't exist yet. Downloading...")
-        api.download(least_clouds_3_id, './'+tile)
+        api.download(least_clouds_3_id, './maps/'+tile)
     else:
         print(pp[least_clouds_3_id]['title']+" already exists.")
 
