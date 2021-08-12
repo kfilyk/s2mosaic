@@ -5,12 +5,13 @@ import os
 filelist = []
 
 
-path = "~/wet_garbage/maps"
+path = "/home/ubuntu/wet_garbage/maps/"
 
-for root, dirs, files in os.walk(path):
-    for file in files:
-        filelist.append(os.path.join(root,file))
+for files in os.listdir(path):
+	for data in os.listdir(path+files):
+		if(data.endswith(".jp2")):
+   			 filelist.append(data)
         
 for name in filelist:
-    print(name)
+	print(name)
 
