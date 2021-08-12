@@ -21,9 +21,12 @@ query_kwargs = {
 
 # gets the single least cloud covered day from the past 30 days
 for tile in tiles:
+    print("TILE: ", tile)
     kw = query_kwargs.copy()
     kw['filename'] = f'*_T{tile}_*'
     pp = api.query(**kw)
+    print("LEN PP: ", len(pp))
+    print("TYPE PP: ", type(pp))
 
     # collect three days of least cloud cover
     least_clouds_1 = 100  # this is percentage
@@ -32,17 +35,25 @@ for tile in tiles:
     least_clouds_1_id = ''
     least_clouds_2_id = ''
     least_clouds_3_id = ''
-
     for p in pp:  # for map in query results
         # if tile has even less cloud cover than the current #1, shuffle #1 to #2
-        if pp[p]['cloudcoverpercentage'] < least_clouds_1:
+        cc = pp[p]['cloudcoverpercentage']
+
+        if cc < least_clouds_1:
             least_clouds_3_id = least_clouds_2_id
             least_clouds_3 = least_clouds_2
             least_clouds_2_id = least_clouds_1_id
             least_clouds_2 = least_clouds_1
             least_clouds_1_id = p
-            least_clouds_1 = pp[p]['cloudcoverpercentage']
-            # ['percentwatercoverage'] < 20
+            least_clouds_1 = cc
+        elif cc < least_clouds_2:
+            least_clouds_3_id = least_clouds_2_id
+            least_clouds_3 = least_clouds_2
+            least_clouds_2_id = p
+            least_clouds_2 = cc
+        elif cc < least_clouds_3:
+            least_clouds_3_id = p
+            least_clouds_3 = cc
 
     print("#1. %s: %d" % (least_clouds_1_id, least_clouds_1))
     print("#2. %s: %d" % (least_clouds_2_id, least_clouds_2))
@@ -63,6 +74,7 @@ for tile in tiles:
     else:
         print(pp[least_clouds_2_id]['title']+" already exists.")
 
+    print('./maps/'+tile+"/"+pp[least_clouds_3_id]['title']+'.SAFE')
     if not os.path.exists('./maps/'+tile+"/"+pp[least_clouds_3_id]['title']+'.SAFE'):
         print(pp[least_clouds_3_id]['title'] +
               " doesn't exist yet. Downloading...")
