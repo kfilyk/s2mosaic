@@ -13,5 +13,7 @@ for files in os.listdir(path):
    			 filelist.append(data)
         
 for name in filelist:
-	print(name)
-
+	with rasterio.open(jp2) as f:
+        jp_data.append(f.read(1))
+        np_data = np.array(jp_data, dtype=jp_data[0].dtype)
+        print(np_data)
