@@ -59,18 +59,36 @@ for tile in tiles:
     print("#2. %s: %d" % (least_clouds_2_id, least_clouds_2))
     print("#3. %s: %d" % (least_clouds_3_id, least_clouds_3))
 
+    # extract all previously downloaded and unzipped
+    for file in os.listdir('./maps/'+tile):
+        print(file)
+        if(file.endswith(".zip")):
+            print("UNZIPPING %s..." %(file))
+            with zipfile.ZipFile('./maps/'+tile+'/'+file, 'r') as zip_ref:
+                zip_ref.extractall('./maps/'+tile)
+            #os.remove(file)
+
     # we have top 3 cloudless days for each tile in 'tiles' list: download to its own folder
     if not os.path.exists('./maps/'+tile+"/"+pp[least_clouds_1_id]['title']+'.SAFE'):
         print(pp[least_clouds_1_id]['title'] +
               " doesn't exist yet. Downloading...")
-        api.download(least_clouds_1_id, './maps/'+tile)
+        try:
+            # sensat automatically skips downloading previously downloaded files??
+            api.download(least_clouds_1_id, './maps/'+tile)
+        except:
+            # if connection gets interrupted
+            pass
     else:
         print(pp[least_clouds_1_id]['title']+" already exists.")
 
     if not os.path.exists('./maps/'+tile+"/"+pp[least_clouds_2_id]['title']+'.SAFE'):
         print(pp[least_clouds_2_id]['title'] +
               " doesn't exist yet. Downloading...")
-        api.download(least_clouds_2_id, './maps/'+tile)
+        try:
+            api.download(least_clouds_2_id, './maps/'+tile)
+        except:
+            # if connection gets interrupted
+            pass
     else:
         print(pp[least_clouds_2_id]['title']+" already exists.")
 
@@ -78,16 +96,20 @@ for tile in tiles:
     if not os.path.exists('./maps/'+tile+"/"+pp[least_clouds_3_id]['title']+'.SAFE'):
         print(pp[least_clouds_3_id]['title'] +
               " doesn't exist yet. Downloading...")
-        api.download(least_clouds_3_id, './maps/'+tile)
+        try:
+            api.download(least_clouds_3_id, './maps/'+tile)
+        except:
+            pass
     else:
         print(pp[least_clouds_3_id]['title']+" already exists.")
 
-    for file in os.listdir():
+    for file in os.listdir('./maps/'+tile):
         print(file)
         if(file.endswith(".zip")):
-            with zipfile.ZipFile(file, 'r') as zip_ref:
-                zip_ref.extractall('.')
-            os.remove(file)
+            print("UNZIPPING %s..." %(file))
+            with zipfile.ZipFile('./maps/'+tile+'/'+file, 'r') as zip_ref:
+                zip_ref.extractall('./maps/'+tile)
+            #os.remove(file)
 
 """
 # GeoJSON FeatureCollection containing footprints and metadata of the scenes
