@@ -29,13 +29,12 @@ for name in filelist:
         jp_data.append(f.read(1))
         np_data = np.array(jp_data, dtype=jp_data[0].dtype)
         print(np_data)
-
-
 s.listen(5)
-print(f"[*] Listening as{SERVER_HOST}:{SERVER_PORT}")
-client_socket, address = s.accept()
-
-print(f"[+] {address} is connected")
+while 1:
+	print(f"[*] Listening as{SERVER_HOST}:{SERVER_PORT}")
+	client_socket, address = s.accept()
+	print(f"[+] {address} is connected")
+	
 
 	
 
