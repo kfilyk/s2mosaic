@@ -26,15 +26,15 @@ print(filelist)
 
 for name in filelist:
 	with rasterio.open(jp2) as f:
-        jp_data.append(f.read(1))
-        np_data = np.array(jp_data, dtype=jp_data[0].dtype)
-        print(np_data)
+         jp_data.append(f.read(1))
+         np_data = np.array(jp_data, dtype=jp_data[0].dtype)
+         print(np_data)
 s.listen(5)
 while 1:
 	print(f"[*] Listening as{SERVER_HOST}:{SERVER_PORT}")
 	client_socket, address = s.accept()
 	print(f"[+] {address} is connected")
-	
+
 
 	
 
