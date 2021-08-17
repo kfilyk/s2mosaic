@@ -10,7 +10,7 @@ jp_data = []
 
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 4096
-SERVER_PORT = 5001
+SERVER_PORT = 240
 SERVER_HOST = "192.168.171.36"
 
 s = socket.socket()
@@ -29,8 +29,9 @@ for name in filelist:
          jp_data.append(f.read(1))
          np_data = np.array(jp_data, dtype=jp_data[0].dtype)
          print(np_data)
-s.listen(5)
+
 while 1:
+	s.listen(5)
 	print(f"[*] Listening as{SERVER_HOST}:{SERVER_PORT}")
 	client_socket, address = s.accept()
 	print(f"[+] {address} is connected")
