@@ -17,7 +17,7 @@ s = socket.socket()
 path = "/home/ubuntu/wet_garbage/maps/"
 
 for files in os.listdir(path):
-	for data in os.listdir(path+files):
+	for data in os.walk(path+files):
 		if(data.endswith(".jp2")):
    			 filelist.append(data)
 print(filelist)
