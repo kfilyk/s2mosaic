@@ -10,11 +10,10 @@ jp_data = []
 
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 4096
-SERVER_PORT = 240
-SERVER_HOST = "192.168.171.36"
+SERVER_PORT = 4000
+SERVER_HOST = "34.133.186.193"
 
 s = socket.socket()
-s.bind((SERVER_HOST,SERVER_PORT))
 path = "/home/ubuntu/wet_garbage/maps/"
 
 for files in os.listdir(path):
@@ -30,11 +29,9 @@ for name in filelist:
          np_data = np.array(jp_data, dtype=jp_data[0].dtype)
          print(np_data)
 
-while 1:
-	s.listen(5)
-	print(f"[*] Listening as{SERVER_HOST}:{SERVER_PORT}")
-	client_socket, address = s.accept()
-	print(f"[+] {address} is connected")
+
+s.connect((host, port))
+print("[+] Connected.")
 
 
 	
