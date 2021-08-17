@@ -18,22 +18,22 @@ evalscript_10m_bands = """
     function setup() {
         return {
             input: [{
-                bands: ["B02", "B03", "B04", "B08", "CLD"],
+                bands: ["B02", "B03", "B04", "B08", "SCL", "CLD"],
             }],
             output: {
                 bands: 5,
                 sampleType: "UINT8",
-                mosaicking: "ORBIT"
             },
         };
     }
 
     function evaluatePixel(sample) {
-        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.CLD];
+        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLD];
 
     }
 
 """
+#mosaicking: "ORBIT"
 
 
 def get_map_request(time_interval):
@@ -106,7 +106,7 @@ for s in sites:
                 # get one month of data
                 today = datetime.today()
                 interval_length = 7 # 7 days
-                earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-6)
+                earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-1)
                 last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
                 slots = [] # all weeks of data to be queried
                 while today > earliest_date:
@@ -151,9 +151,19 @@ for s in sites:
                     maps[m] = map
                     map = map.astype(np.uint8) # convert to int8
                     img_rgb = Image.fromarray(map[:, :, [2, 1, 0]], 'RGB')
-                    img_cld = Image.fromarray(map[:, :, 5], 'L') # show clouds
+
+                    for i in range(0, map.shape[0]):
+                        for j in range(0, map.shape[1]):
+                            if map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 0 or map[i, j, 4] == 1 or map[i, j, 4] == 2:
+                                map[i, j, 4] = 255
+                            
+                    #map[:, :, 4] = map[:, :, 4]*255 # clouds = 7, 8,9
+
+                    #map[:, :, 4] = map[:, :, 4]*2.55 # clouds = 7, 8,9
+                    img_cld = Image.fromarray(map[:, :, 4], 'L') # show clouds
 
                     img_rgb.show()
+                    img_cld.show()
                     #img_ir = Image.fromarray(map[:, :, 3], 'L')
                     #img_ir.show()
                     #img_scl = Image.fromarray(map[:, :, 4], 'L')
@@ -175,7 +185,7 @@ for s in sites:
                     elif i == 3:
                         col = 'IR'
 
-                    data_path = folder_path + '/'+col + \
+                    data_path = folder_path + '/'+col + 
                         '.png'  # 106.0_13.0_1.jpg
                     print(data_path)
                     im = Image.fromarray(bands[:, :, i])
