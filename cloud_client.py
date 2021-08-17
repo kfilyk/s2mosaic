@@ -1,4 +1,3 @@
-from img_proc import BUFFER_SIZE, SEPARATOR
 import os
 import socket
 import tqdm
