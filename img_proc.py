@@ -30,7 +30,7 @@ for name in filelist:
          print(np_data)
 
 
-s.connect((host, port))
+s.connect((SERVER_HOST, SERVER_PORT))
 print("[+] Connected.")
 
 

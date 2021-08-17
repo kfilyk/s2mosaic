@@ -10,7 +10,7 @@ host = "127.0.0.1"
 port = 240
 
 s = socket.socket()
-s.bind((SERVER_HOST,SERVER_PORT))
+s.bind((host,port))
 print(f"[+] Connecting to {host}:{port}")
 s.listen(5)
 print(f"[*] Listening as{SERVER_HOST}:{SERVER_PORT}")
