@@ -7,7 +7,7 @@ BUFFER_SIZE = 4096
 
 host = "127.0.0.1"
 
-port = 240
+port = 4000
 
 s = socket.socket()
 s.bind((host,port))
