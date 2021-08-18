@@ -4,7 +4,6 @@ import numpy as np
 from PIL import Image
 import os
 import matplotlib.pyplot as plt
-import rasterio
 import cv2  # pip install opencv-contrib-python
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
@@ -15,22 +14,12 @@ import pickle
 N_OPTICS_BANDS = 4
 
 
-# note: dont use aerosol optical thickness (AOT) nor water vapour (WVP) bands
-
-
-tileFolderPath = "./maps/"
-tilePaths = []
-print("Using Tiles:")
-for tilePath in os.listdir(tileFolderPath):  # Get each directory's file path
-    """
-    if '.SAFE' in tilePath:
-        tilePaths.append(tileFolderPath+tilePath)
-        print(tilePath)
-    """
-    if '.png' in tilePath:
-        tilePaths.append(tileFolderPath+tilePath)
-        print(tilePath)
-print("\n")
+files = []
+filelist = []
+for dirpath, dirnames, filenames in os.walk("./maps"):
+  for filename in [f for f in filenames if f.endswith(".png")]:
+    filelist.append(os.path.join(dirpath,filename))
+    files.append(filename)
 
 
 jp2Paths = []  # Will be made into a 2D array
