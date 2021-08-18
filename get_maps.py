@@ -13,22 +13,44 @@ from scipy.ndimage.filters import gaussian_filter
 
 
 # b02 red b03 green b04 blue ; CLD = sentinel2 cloud detection
+'''
 evalscript_10m_bands = """
     //VERSION=3
     function setup() {
         return {
             input: [{
-                bands: ["B02", "B03", "B04", "B08", "SCL", "CLD"],
+                bands: ["B02", "B03", "B04", "B08", "SCL", "CLP", "AOT", "CLD" ],
             }],
             output: {
-                bands: 5,
+                bands: 8,
                 sampleType: "UINT8",
             },
         };
     }
 
     function evaluatePixel(sample) {
-        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLD];
+        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.AOT*400, sample.CLD];
+
+    }
+
+"""
+'''
+evalscript_10m_bands = """
+    //VERSION=3
+    function setup() {
+        return {
+            input: [{
+                bands: ["B02", "B03", "B04", "B08", "SCL", "CLP", "AOT"],
+            }],
+            output: {
+                bands: 8,
+                sampleType: "UINT8",
+            },
+        };
+    }
+
+    function evaluatePixel(sample) {
+        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.AOT*400];
 
     }
 
@@ -41,7 +63,7 @@ def get_map_request(time_interval):
         evalscript=evalscript_10m_bands,
         input_data=[
             SentinelHubRequest.input_data(
-                data_collection=DataCollection.SENTINEL2_L2A,  # L2A atmospheric corrected data
+                data_collection=DataCollection.SENTINEL2_L1C,  # L2A atmospheric corrected data
                 time_interval=time_interval,
                 #maxcc = 0.4,
                  # if below is commented out, then most recent first
@@ -150,24 +172,47 @@ for s in sites:
                     """
                     maps[m] = map
                     map = map.astype(np.uint8) # convert to int8
-                    img_rgb = Image.fromarray(map[:, :, [2, 1, 0]], 'RGB')
 
                     for i in range(0, map.shape[0]):
                         for j in range(0, map.shape[1]):
-                            if map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 0 or map[i, j, 4] == 1 or map[i, j, 4] == 2:
+                            #scl layer
+                            if map[i, j, 4] == 10: # cirrus clouds
+                                map[i, j, 4] = 225
+                            elif map[i, j, 4] == 7: # low prob. clouds
+                                map[i, j, 4] = 235
+                            elif map[i, j, 4] == 8: # med prob. clouds
+                                map[i, j, 4] = 245
+                            elif map[i, j, 4] == 9:# high prob. clouds
                                 map[i, j, 4] = 255
-                            
-                    #map[:, :, 4] = map[:, :, 4]*255 # clouds = 7, 8,9
+                            elif map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 0 or map[i, j, 4] == 1 or map[i, j, 4] == 2: # ground/defect pixels
+                                map[i, j, 4] = 100
+                            # water is black
 
-                    #map[:, :, 4] = map[:, :, 4]*2.55 # clouds = 7, 8,9
-                    img_cld = Image.fromarray(map[:, :, 4], 'L') # show clouds
+
+                            # clp layer    
+                            if map[i, j, 5] < 4: # guarantee not cloud
+                                map[i, j, 5] = 4
+                            
+                                  # clouds = 7, 8,9
+                    map[:, :, 5] - 4 # min of 0
+                    min_clp = 4
+                    max_clp = np.amax(map[:, :, 5]) # somewhere around ~251, lets say
+                    map[:, :, 5]*(255/max_clp) # gives a ceil of 255
+                            
+                    #map[:, :, 5] = map[:, :, 5]*2.55 # clouds = 7, 8,9
+
+                    img_rgb = Image.fromarray(map[:, :, [2, 1, 0]], 'RGB')
+                    img_scl = Image.fromarray(map[:, :, 4], 'L') # show clouds
+                    img_clp = Image.fromarray(map[:, :, 5], 'L') # show clouds
+                    img_aot = Image.fromarray(map[:, :, 6], 'L') # show clouds
+                    #img_cld = Image.fromarray(map[:, :, 7], 'L') # show clouds
 
                     img_rgb.show()
-                    img_cld.show()
-                    #img_ir = Image.fromarray(map[:, :, 3], 'L')
-                    #img_ir.show()
-                    #img_scl = Image.fromarray(map[:, :, 4], 'L')
-                    #img_scl.show()
+                    img_scl.show()
+                    img_clp.show()
+                    img_aot.show()
+                    #img_cld.show()
+
                 maps = maps.astype(np.uint8) # multiple days of maps
 
 
