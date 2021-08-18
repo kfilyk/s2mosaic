@@ -3,7 +3,7 @@ import os
 import socket
 import tqdm
 
-SEPARATOR = "<SEPARATOR>"
+SEPARATOR = " "
 
 BUFFER_SIZE = 4096
 
