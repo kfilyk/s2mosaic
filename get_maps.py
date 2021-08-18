@@ -18,7 +18,7 @@ evalscript_10m_bands = """
     function setup() {
         return {
             input: [{
-                bands: ["B02", "B03", "B04", "B08", "SCL", "CLP", "AOT", "CLD" ],
+                bands: ["B02", "B03", "B04", "B08", "SCL", "CLP", "CLM"],
             }],
             output: {
                 bands: 8,
@@ -28,13 +28,11 @@ evalscript_10m_bands = """
     }
 
     function evaluatePixel(sample) {
-        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.AOT*400, sample.CLD];
+        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.CLM];
 
     }
 
 """
-#mosaicking: "ORBIT"
-
 
 def get_map_request(time_interval):
     return SentinelHubRequest(
@@ -106,7 +104,7 @@ for s in sites:
                 # get one month of data
                 today = datetime.today()
                 interval_length = 7 # 7 days
-                earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-1)
+                earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-4)
                 last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
                 slots = [] # all weeks of data to be queried
                 while today > earliest_date:
@@ -155,17 +153,17 @@ for s in sites:
                         for j in range(0, map.shape[1]):
                             #scl layer
                             if map[i, j, 4] == 10: # cirrus clouds
-                                map[i, j, 4] = 225
+                                map[i, j, 4] = 210
                             elif map[i, j, 4] == 7: # low prob. clouds
-                                map[i, j, 4] = 235
+                                map[i, j, 4] = 225
                             elif map[i, j, 4] == 8: # med prob. clouds
-                                map[i, j, 4] = 245
+                                map[i, j, 4] = 240
                             elif map[i, j, 4] == 9:# high prob. clouds
                                 map[i, j, 4] = 255
-                            elif map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 0 or map[i, j, 4] == 1 or map[i, j, 4] == 2: # ground/defect pixels
+                            elif map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 2: # ground/defect pixels
                                 map[i, j, 4] = 100
-                            # water is black
-
+                            elif map[i, j, 4] == 0 or map[i, j, 4] == 1:
+                                map[i, j, 4] = 150
 
                             # clp layer    
                             if map[i, j, 5] < 4: # guarantee not cloud
@@ -176,20 +174,19 @@ for s in sites:
                     min_clp = 4
                     max_clp = np.amax(map[:, :, 5]) # somewhere around ~251, lets say
                     map[:, :, 5]*(255/max_clp) # gives a ceil of 255
-                            
-                    #map[:, :, 5] = map[:, :, 5]*2.55 # clouds = 7, 8,9
+                    map[:, :, 6] = map[:, :, 6]*255 # clm mask is just a bool mask: get high contrast
 
                     img_rgb = Image.fromarray(map[:, :, [2, 1, 0]], 'RGB')
+                    img_ir = Image.fromarray(map[:, :, 3], 'L') # IR
                     img_scl = Image.fromarray(map[:, :, 4], 'L') # 
                     img_clp = Image.fromarray(map[:, :, 5], 'L') 
-                    img_aot = Image.fromarray(map[:, :, 6], 'L') # useless
-                    img_cld = Image.fromarray(map[:, :, 7], 'L') # useless
+                    img_clm = Image.fromarray(map[:, :, 6], 'L') 
 
                     img_rgb.show()
+                    img_ir.show()
                     img_scl.show()
                     img_clp.show()
-                    img_aot.show()
-                    img_cld.show()
+                    img_clm.show()
 
                 maps = maps.astype(np.uint8) # multiple days of maps
 
