@@ -13,7 +13,6 @@ from scipy.ndimage.filters import gaussian_filter
 
 
 # b02 red b03 green b04 blue ; CLD = sentinel2 cloud detection
-'''
 evalscript_10m_bands = """
     //VERSION=3
     function setup() {
@@ -34,27 +33,6 @@ evalscript_10m_bands = """
     }
 
 """
-'''
-evalscript_10m_bands = """
-    //VERSION=3
-    function setup() {
-        return {
-            input: [{
-                bands: ["B02", "B03", "B04", "B08", "SCL", "CLP", "AOT"],
-            }],
-            output: {
-                bands: 8,
-                sampleType: "UINT8",
-            },
-        };
-    }
-
-    function evaluatePixel(sample) {
-        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.AOT*400];
-
-    }
-
-"""
 #mosaicking: "ORBIT"
 
 
@@ -63,7 +41,7 @@ def get_map_request(time_interval):
         evalscript=evalscript_10m_bands,
         input_data=[
             SentinelHubRequest.input_data(
-                data_collection=DataCollection.SENTINEL2_L1C,  # L2A atmospheric corrected data
+                data_collection=DataCollection.SENTINEL2_L2A,  # L2A atmospheric corrected data
                 time_interval=time_interval,
                 #maxcc = 0.4,
                  # if below is commented out, then most recent first
@@ -202,16 +180,16 @@ for s in sites:
                     #map[:, :, 5] = map[:, :, 5]*2.55 # clouds = 7, 8,9
 
                     img_rgb = Image.fromarray(map[:, :, [2, 1, 0]], 'RGB')
-                    img_scl = Image.fromarray(map[:, :, 4], 'L') # show clouds
-                    img_clp = Image.fromarray(map[:, :, 5], 'L') # show clouds
-                    img_aot = Image.fromarray(map[:, :, 6], 'L') # show clouds
-                    #img_cld = Image.fromarray(map[:, :, 7], 'L') # show clouds
+                    img_scl = Image.fromarray(map[:, :, 4], 'L') # 
+                    img_clp = Image.fromarray(map[:, :, 5], 'L') 
+                    img_aot = Image.fromarray(map[:, :, 6], 'L') # useless
+                    img_cld = Image.fromarray(map[:, :, 7], 'L') # useless
 
                     img_rgb.show()
                     img_scl.show()
                     img_clp.show()
                     img_aot.show()
-                    #img_cld.show()
+                    img_cld.show()
 
                 maps = maps.astype(np.uint8) # multiple days of maps
 
