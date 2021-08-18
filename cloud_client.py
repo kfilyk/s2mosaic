@@ -21,9 +21,9 @@ client_socket, address = s.accept()
 print(f"[+] {address} is connected")
 
 while 1:
-    received = client_socket.recv(BUFFER_SIZE).decode()
+    received = client_socket.recv(BUFFER_SIZE)
     print(received)
-    filename, filesize = received.split(SEPARATOR)
+    filename, filesize = received.decode().split(SEPARATOR)
     filename = os.path.basename(filename)
     # convert to integer
     filesize = int(filesize)
