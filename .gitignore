@@ -1,0 +1,5 @@
+.DS_Store
+**/.DS_Store
+maps/*
+rgb_raw_maps.npy
+raw_maps.npy
