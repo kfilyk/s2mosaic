@@ -15,7 +15,7 @@ port = 4000
 s = socket.socket()
 s.bind((host,port))
 print(f"[+] Connecting to {host}:{port}")
-s.listen(5)
+s.listen(5) # listens for up to 5 incoming connections
 print(f"[*] Listening as{host}:{port}")
 client_socket, address = s.accept()
 print(f"[+] {address} is connected")
