@@ -262,7 +262,7 @@ for s in sites:
 
                     # print("rgb map: ", rgb_map)
                     # print("rgb map shape: ", rgb_map.shape)
-
+                    rgb_map = rgb_map.astype(np.float64)
                     for band in range(0, 3):
                         print("band shape: ", rgb_map[:, :, band].shape)
                         min = np.amin(rgb_map[:, :, band])
@@ -270,9 +270,10 @@ for s in sites:
                         rgb_map[:,:, band] = rgb_map[:,:,band]-min
                         max = np.amax(rgb_map[:,:,band])
                         print("max: ", max)
-                        rgb_map[:, :, band] = int( float(rgb_map[:, :, band]) * (255.0/float(max)))
+                        rgb_map[:, :, band] *= (255.0/float(max))
                         print("min: ", np.amin(rgb_map[:, :, band]))
                         print("max: ", np.amax(rgb_map[:, :, band]))
+                    rgb_map = rgb_map.astype(np.uint8)
                         
                     
                     '''
