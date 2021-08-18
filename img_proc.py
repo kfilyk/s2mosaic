@@ -4,7 +4,10 @@ import tqdm
 import rasterio
 import os
 import zipfile
+<<<<<<< HEAD
 import cv2
+=======
+>>>>>>> fa4c1749a9f4dfb8283eb5f46fcd64fcdee47762
 
 filelist = []
 jp_data = []
@@ -13,8 +16,12 @@ SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 4096
 SERVER_PORT = 4000
 SERVER_HOST = "34.133.186.193"
+<<<<<<< HEAD
 os.environ['OPENCV_IO_ENABLE_JASPER'] = 'true'
+=======
+>>>>>>> fa4c1749a9f4dfb8283eb5f46fcd64fcdee47762
 
+s = socket.socket()
 path = "/home/ubuntu/wet_garbage/maps/"
 files = []
 s = socket.socket()
@@ -27,6 +34,7 @@ for dirpath, dirnames, filenames in os.walk("."):
 
 NTL = []
 
+<<<<<<< HEAD
 for name in filelist:
     if "NTL" in name:
         if "10m" in name:
@@ -64,4 +72,30 @@ for ind,img in enumerate(png):
         progress.update(len(bytes_read))
 
 s.close()
+=======
+
+for dirpath, dirnames, filenames in os.walk("."):
+    for filename in [f for f in filenames if f.endswith(".jp2")]:
+        filelist.append(os.path.join(dirpath,filename))
+
+NTL = [:3]
+
+for name in filelist:
+    if "NTL" in name:
+        if "10m" in name:
+            NTL[0].append(name)
+        if "20m" in name:
+            NTL[1].append(name)
+        if "60m" in name:
+            NTL[2].append(name)
+
+
+data = np.array(jp_data, dtype=jp_data[0].dtype)
+print(data.shape)
+s.connect((SERVER_HOST, SERVER_PORT))
+print("[+] Connected.")
+filename = "np_array"
+filesize = os.path.getsize(filename)
+s.send(f"{filename}{SEPARATOR}{filesize}".encode())
+>>>>>>> fa4c1749a9f4dfb8283eb5f46fcd64fcdee47762
 

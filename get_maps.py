@@ -12,28 +12,29 @@ from PIL import Image
 from scipy.ndimage.filters import gaussian_filter
 
 
-
+# b02 red b03 green b04 blue ; CLD = sentinel2 cloud detection
 evalscript_10m_bands = """
     //VERSION=3
     function setup() {
         return {
             input: [{
-                bands: ["B02", "B03", "B04", "B08", "CLD"],
+                bands: ["B02", "B03", "B04", "B08", "SCL", "CLP", "AOT", "CLD" ],
             }],
             output: {
-                bands: 5,
+                bands: 8,
                 sampleType: "UINT8",
-                mosaicking: Mosaicking.SIMPLE
             },
         };
     }
 
     function evaluatePixel(sample) {
-        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.CLD];
+        return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.AOT*400, sample.CLD];
 
     }
 
 """
+#mosaicking: "ORBIT"
+
 
 def get_map_request(time_interval):
     return SentinelHubRequest(
@@ -42,7 +43,7 @@ def get_map_request(time_interval):
             SentinelHubRequest.input_data(
                 data_collection=DataCollection.SENTINEL2_L2A,  # L2A atmospheric corrected data
                 time_interval=time_interval,
-                maxcc = 0.4,
+                #maxcc = 0.4,
                  # if below is commented out, then most recent first
                 mosaicking_order='leastCC'
             )
@@ -74,6 +75,7 @@ sites = {}
 # coast of hanoi:
 # sites['hanoi'] = [106.00, 13.00, 116.00, 22.50]
 sites['accra'] = [-0.40, 5.20, 0.20, 5.60]
+sites['accra'] = [-0.20, 5.40, 0.20, 5.60]
 
 for s in sites:
     start_x = sites[s][0]
@@ -103,22 +105,22 @@ for s in sites:
                 """All requests require bounding box to be given as an instance of sentinelhub.geometry.BBox with corresponding Coordinate Reference System (sentinelhub.geometry.CRS)"""
                 # get one month of data
                 today = datetime.today()
-                last_month = today + dateutil.relativedelta.relativedelta(months=-2)
-                last_week = today + dateutil.relativedelta.relativedelta(weeks=-1)
-                slots = []
-                while today > last_month:
-                    
+                interval_length = 7 # 7 days
+                earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-1)
+                last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
+                slots = [] # all weeks of data to be queried
+                while today > earliest_date:
                     today_str = today.strftime('%Y-%m-%d')  # get in string format
                     last_week_str = last_week.strftime('%Y-%m-%d')
-                    slots.append((last_week_str, today_str))
+                    slots.append((last_week_str, today_str)) # 1 week intervals
                     today = last_week
-                    last_week = today + dateutil.relativedelta.relativedelta(weeks=-1)
+                    last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length)
                 print(slots) # should have a number of time intervals
 
                 list_of_requests = [get_map_request(slot) for slot in slots]
                 list_of_requests = [request.download_list[0] for request in list_of_requests] # now have a list of requests
                 # download data with multiple threads
-                raw_maps = np.array(SentinelHubDownloadClient(config=config).download(list_of_requests, max_threads=5), dtype=np.float64)
+                raw_maps = np.array(SentinelHubDownloadClient(config=config).download(list_of_requests, max_threads=5), dtype=np.float64) # ACTUALLY DOWNLOADS
                 #raw_maps = np.array(map_requests.get_data(), dtype=np.float64) # get array of all maps - note that SCL cloud cover map
                 print(raw_maps.shape)  # should be like (3, 13259,1399, 5)
                 print(raw_maps.dtype)
@@ -128,29 +130,67 @@ for s in sites:
                 print(average_map.shape)  # should be like (3, 13259,1399, 5)
                 print(pixel_count.shape)  # should be like (3, 13259,1399, 5)
 
+
+                
                 for m in range(0, len(raw_maps)):
                     map = raw_maps[m] 
+                    """
                     map[:, :, 4] = gaussian_filter(map[:, :, 4], sigma=3)
                     for idx, x in np.ndenumerate(map[:, :, 4]):
                         if map[idx[0], idx[1], 4] > 0: # if non-zero, indicates some presence of clouds
-                            map[idx[0], idx[1], 0] = 0
-                            map[idx[0], idx[1], 1] = 0
-                            map[idx[0], idx[1], 2] = 0
-                            map[idx[0], idx[1], 3] = 0
+                            map[idx[0], idx[1], 0] = 0 # R
+                            map[idx[0], idx[1], 1] = 0 # G
+                            map[idx[0], idx[1], 2] = 0 # B
+                            map[idx[0], idx[1], 3] = 0 # IR
                     for i in range(0, 5):  # R, G, B, IR all need to be normalized
                         min = np.amin(map[:, :, i]) # i==4 has range between 0-100
                         map[:, :, i] -= min  # center min = 0
                         max = np.amax(map[:, :, i])
                         map[:, :, i] *= (255/max) # converts to range 0, 255
-
+                    """
                     maps[m] = map
                     map = map.astype(np.uint8) # convert to int8
+
+                    for i in range(0, map.shape[0]):
+                        for j in range(0, map.shape[1]):
+                            #scl layer
+                            if map[i, j, 4] == 10: # cirrus clouds
+                                map[i, j, 4] = 225
+                            elif map[i, j, 4] == 7: # low prob. clouds
+                                map[i, j, 4] = 235
+                            elif map[i, j, 4] == 8: # med prob. clouds
+                                map[i, j, 4] = 245
+                            elif map[i, j, 4] == 9:# high prob. clouds
+                                map[i, j, 4] = 255
+                            elif map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 0 or map[i, j, 4] == 1 or map[i, j, 4] == 2: # ground/defect pixels
+                                map[i, j, 4] = 100
+                            # water is black
+
+
+                            # clp layer    
+                            if map[i, j, 5] < 4: # guarantee not cloud
+                                map[i, j, 5] = 4
+                            
+                                  # clouds = 7, 8,9
+                    map[:, :, 5] - 4 # min of 0
+                    min_clp = 4
+                    max_clp = np.amax(map[:, :, 5]) # somewhere around ~251, lets say
+                    map[:, :, 5]*(255/max_clp) # gives a ceil of 255
+                            
+                    #map[:, :, 5] = map[:, :, 5]*2.55 # clouds = 7, 8,9
+
                     img_rgb = Image.fromarray(map[:, :, [2, 1, 0]], 'RGB')
+                    img_scl = Image.fromarray(map[:, :, 4], 'L') # 
+                    img_clp = Image.fromarray(map[:, :, 5], 'L') 
+                    img_aot = Image.fromarray(map[:, :, 6], 'L') # useless
+                    img_cld = Image.fromarray(map[:, :, 7], 'L') # useless
+
                     img_rgb.show()
-                    #img_ir = Image.fromarray(map[:, :, 3], 'L')
-                    #img_ir.show()
-                    #img_scl = Image.fromarray(map[:, :, 4], 'L')
-                    #img_scl.show()
+                    img_scl.show()
+                    img_clp.show()
+                    img_aot.show()
+                    img_cld.show()
+
                 maps = maps.astype(np.uint8) # multiple days of maps
 
 
@@ -168,7 +208,7 @@ for s in sites:
                     elif i == 3:
                         col = 'IR'
 
-                    data_path = folder_path + '/'+col + \
+                    data_path = folder_path + '/'+col + 
                         '.png'  # 106.0_13.0_1.jpg
                     print(data_path)
                     im = Image.fromarray(bands[:, :, i])
@@ -181,5 +221,7 @@ for s in sites:
             else:
                 print("PATH EXISTS ALREADY...")
             y = round(y+y_delta, 1)
+            break
+        break
         x = round(x+x_delta, 1)
         y = start_y
