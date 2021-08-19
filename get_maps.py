@@ -72,7 +72,7 @@ evalscript_l2a = """
             }],
             output: {
                 bands: 4,
-                sampleType: "UINT8",
+                sampleType: "AUTO",
             },
         };
     }
@@ -148,8 +148,14 @@ def get_scaled_band(idx, map):
 # sign in to sentinelhub
 config = SHConfig()
 
-config.sh_client_id = '5c047aa4-a418-44d5-8439-9961b84e1d1a'
-config.sh_client_secret = '+eHOXYc&5.rTUKN_Gb]?OS4jr/xu?_5mtMMUMqin'
+#config.sh_client_id = '5c047aa4-a418-44d5-8439-9961b84e1d1a'
+#config.sh_client_secret = '+eHOXYc&5.rTUKN_Gb]?OS4jr/xu?_5mtMMUMqin'
+
+#leo5757577@hotmail.com
+#uJSxW5TD2xPyE3z
+config.sh_client_id = '3b804ca0-0b07-4944-8d57-370037a191a7'
+config.sh_client_secret = 'k56Pk,hBQubcKwJqr@qvQITX)EFZltq{i.0rM|@/'
+
 if config.instance_id == '':
     print("Warning! To use OGC functionality of Sentinel Hub, please configure the `instance_id`.")
 config.save()
@@ -212,7 +218,7 @@ for s in sites:
     # get one month of data
     today = datetime.today()
     interval_length = 7 # 7 days
-    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-3)
+    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-6)
     last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
     slots = [] # all weeks of data to be queried
     while today > earliest_date:
@@ -226,7 +232,7 @@ for s in sites:
     l2a_list_of_requests = [get_l2a_request(slot) for slot in slots]
     l2a_list_of_requests = [request.download_list[0] for request in l2a_list_of_requests] # now have a list of requests
     l1c_list_of_requests = [get_l1c_request(slot) for slot in slots]
-    l1c_list_of_requests = [request.download_list[0] for request in l1c_list_of_requests] # now have a list of 
+    l1c_list_of_requests = [request.download_list[0] for request in l1c_list_of_requests] 
 
     # raw_maps = np.array(map_requests.get_data(), dtype=np.float64) # get array of all maps - note that SCL cloud cover map
     # print("raw_maps shape: ", raw_maps.shape)  # should be like (3, 13259,1399, 5)
@@ -236,7 +242,6 @@ for s in sites:
     # pixel_count = np.zeros_like(maps[0, :, :]) # counts how many different sub map values have been accumulated for a given pixel location
     # print(average_map.shape)  # should be like (3, 13259,1399, 5)
     # print(pixel_count.shape)  # should be like (3, 13259,1399, 5)]
-
 
     # Download if rgb raw maps exist, load if not.
     l2a_raw_maps_file_names = ["l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
