@@ -313,7 +313,6 @@ for s in sites:
 
         # none rgb images
         the_map = raw_maps[m]
-        # the_map = rgb_map[m] # Only uncomment if cloudless files made and want to avoid loading in big raw map file
 
         bands = the_map[..., :-1]
         mask = the_map[..., -1]
@@ -329,8 +328,6 @@ for s in sites:
             all_bands=True
         )
 
-
-        
         # Cloud prob data saving
         cloud_prob = []
         if not os.path.exists(folder_path+"/cloud_prob-"+str(m)+".npy"):
@@ -383,33 +380,32 @@ for s in sites:
         max = np.amax(the_map[:, :, 0])
         # the_map[:, :, 0] *=255/max
 
+        '''
         # Combined
         combined_img = np.empty(shape=(the_map[:, :, 0].shape[0],the_map[:, :, 0].shape[1]))
         for i in range(0, the_map[:, :, 0].shape[0]):
             for j in range(0, the_map[:, :, 0].shape[1]):
-                combined_img[i,j] = (the_map[i, j, 0]*4 + the_map[i, j, 1] + the_map[i, j, 2] + the_map[i, j, 3])/4
+                combined_img[i,j] = (the_map[i, j, 0] + the_map[i, j, 1] + the_map[i, j, 2] + the_map[i, j, 3])/4
 
         # Combined
         combined_img *=255/max
         combined_img = combined_img.astype(np.uint8)
         img_combined = Image.fromarray(combined_img, 'L')
         img_combined.show()
-
+        '''
 
         # B1
-        # min = np.amin(the_map[:, :, 0])
-        # the_map[:, :, 0] = the_map[:, :, 0] - min
-        # max = np.amax(the_map[:, :, 0])
-        
-        # the_map[:, :, 0]*=255/max
-        # b1 = the_map[:, :, 0].astype(np.uint8)
-        # print("b1 data type: ", b1.dtype)
-        # print("after max b1: ", np.amax(b1))
-        # print("after min b1: ", np.amin(b1))
-        # img_b1 = Image.fromarray(b1, 'L')
-        # img_b1.show()
+        the_map[:, :, 0]*=255
+        b1 = the_map[:, :, 0]
+        min = np.amin(b1)
+        b1 = b1 - min
+        max = np.amax(b1)
+        b1 = b1*255/max
+        b1 = b1.astype(np.uint8)
 
-
+        print("b1 data type: ", b1.dtype)
+        img_b1 = Image.fromarray(b1, 'L')
+        img_b1.show()
 
         # Infrared
         # the_map[:, :, 7]*=255
@@ -420,6 +416,38 @@ for s in sites:
         # img_infr = Image.fromarray(infrared, 'L')
         # img_infr.show()
 
+        # B09
+        '''
+        the_map[:, :, 9]*=255
+        b9 = the_map[:, :, 9]
+        min = np.amin(b9)
+        b9 = b9 - min
+        max = np.amax(b9)
+        b9 = b9*255/max
+        b9 = b9.astype(np.uint8)
+
+        print("b9 data type: ", b9.dtype)
+        img_b9 = Image.fromarray(b9, 'L')
+        img_b9.show()
+        '''
+
+        '''
+        # B10
+        the_map[:, :, 10]*=255
+        b10 = the_map[:, :, 9]
+        min = np.amin(b10)
+        b10 = b10 - min
+        max = np.amax(b10)
+        b10 = b10*255/max
+        
+        b10 = b10.astype(np.uint8)
+
+        print("b10 data type: ", b10.dtype)
+        print("after max b10: ", np.amax(b10))
+        print("after min b10: ", np.amin(b10))
+        img_b10 = Image.fromarray(b10, 'L')
+        img_b10.show()
+        '''
         # B11
         # the_map[:, :, 11]*=255
         # b11 = the_map[:, :, 11].astype(np.uint8)
