@@ -1,5 +1,6 @@
 .DS_Store
 **/.DS_Store
-//maps/*
+/maps/*
+tiles/*
 rgb_raw_maps.npy
 raw_maps.npy
