@@ -72,7 +72,7 @@ evalscript_l2a = """
             }],
             output: {
                 bands: 4,
-                sampleType: "AUTO",
+                sampleType: "FLOAT32",
             },
         };
     }
@@ -218,7 +218,7 @@ for s in sites:
     # get one month of data
     today = datetime.today()
     interval_length = 7 # 7 days
-    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-6)
+    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-1)
     last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
     slots = [] # all weeks of data to be queried
     while today > earliest_date:
@@ -245,7 +245,7 @@ for s in sites:
 
     # Download if rgb raw maps exist, load if not.
     l2a_raw_maps_file_names = ["l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
-    l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)
+    l2a_raw_maps = []
     print("FLAG1")
 
     #rgb_raw_maps_file_name = "rgb_raw_maps.npy"
@@ -254,20 +254,20 @@ for s in sites:
         for band, f in enumerate(l2a_raw_maps_file_names):
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
+                l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)
+
                 #print(DEBUG_FILE_OPERATION+f+" file does not exist for ",s, sites[s]," downloading...")
                 # Download maps
                 #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
                 # Save raw maps
                 #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                #np.save(folder_path+"/"+f, rgb_raw_maps)
+                np.save(folder_path+"/"+f, l2a_raw_maps)
                 #print(map[:, :, band].shape)
                 #print(folder_path+"/"+slots[idx][1]+"/"+f)
-            if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                print(np.amin(map[:,:, band]))
-                print(np.amax(map[:,:, band]))
-                b = (map[:,:, band]*255).astype(np.uint8)
-                im = Image.fromarray(b)
-                im.save(folder_path+"/"+slots[idx][1]+"/"+f)
+                if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
+                    b = (map[:,:, band]*255).astype(np.uint8)
+                    im = Image.fromarray(b)
+                    im.save(folder_path+"/"+slots[idx][1]+"/"+f)
             """
             else:
                 # Load saved maps
@@ -277,26 +277,24 @@ for s in sites:
 
     # Download if raw maps exist, load if not.
     l1c_raw_maps_file_names = ["l1c_b01.png","l1c_b02.png","l1c_b03.png","l1c_b04.png","l1c_b05.png","l1c_b06.png","l1c_b07.png","l1c_b08.png","l1c_b8a.png","l1c_b09.png","l1c_b10.png","l1c_b11.png","l1c_b12.png"]
-    l1c_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l1c_list_of_requests, max_threads=5), dtype= np.float32)
-    print("FLAG2")
-
+    l1c_raw_maps = []
     #raw_maps_file_name = "raw_maps.npy"
     #raw_maps = []
     for idx, map in enumerate(l1c_raw_maps):
         for band, f in enumerate(l1c_raw_maps_file_names):
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
-
+                l1c_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l1c_list_of_requests, max_threads=5), dtype= np.float32)
                 #print(DEBUG_FILE_OPERATION+f+" file does not exist for ",s, sites[s]," downloading...")
                 # Download maps
                 #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
                 # Save raw maps
                 #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                #np.save(folder_path+"/"+f, rgb_raw_maps)
-            if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                b = (map[:,:, band]*255).astype(np.uint8)
-                im = Image.fromarray(b)
-                im.save(folder_path+"/"+slots[idx][1]+"/"+f)
+                np.save(folder_path+"/"+f, l1c_raw_maps)
+                if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
+                    b = (map[:,:, band]*255).astype(np.uint8)
+                    im = Image.fromarray(b)
+                    im.save(folder_path+"/"+slots[idx][1]+"/"+f)
 
     # # If downloaded tile bad
     # is_all_zero = np.all(rgb_raw_maps == 0)
