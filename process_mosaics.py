@@ -25,8 +25,8 @@ print(files)
 print('\n')
 print(filelist)
 '''
-filelist.append('./maps/accra/rgb.png')
-files.append('rgb.png')
+filelist.append('./maps/accra/l1c_rgb_raw.png')
+files.append('l1c_rgb_raw.png')
 
 for idx, f in enumerate(filelist):
     filename = os.path.splitext(files[idx])[0]
@@ -89,50 +89,7 @@ for idx, f in enumerate(filelist):
         im.save('./maps/'+filename+"_aero.png")        
         a_data = a_data.astype(np.float64)
         '''
-        # ------------------------- Grey Intensity 
-        '''
-        data = data.astype(np.float64)
 
-        grey = ((data[:, :, 0] + data[:, :, 1] + data[:, :, 2] + a_data[:, :])/4)
-        min = np.amin(grey)
-        grey = grey - min
-        max = np.amax(grey)
-        grey = grey * 255/max
-        grey = np.stack((grey,)*3, axis=-1)
-        grey = grey.astype(np.uint8)
-        print(grey.shape)
-        im = Image.fromarray(grey)
-        im.save('./maps/'+filename+"_grey.png")        
-
-        grey_2 = (data[:, :, 0] * data[:, :, 1] * data[:, :, 2] * a_data[:,:])
-        grey_2 = np.sqrt(grey_2)
-        min = np.amin(grey_2)
-        grey_2 = grey_2 - min
-        max = np.amax(grey_2)
-        grey_2 = grey_2 * 255/max
-        grey_2 = np.stack((grey_2,)*3, axis=-1)
-        print(grey_2.shape)
-        grey_2 = grey_2.astype(np.uint8)
-        im = Image.fromarray(grey_2)
-        im.save('./maps/'+filename+"_grey_2.png")   
-
-        grey_3 = (data[:, :, 0]*data[:, :, 0] + data[:, :, 1]*data[:, :, 1] + data[:, :, 2]*data[:, :, 2]  + a_data[:, :]*a_data[:, :])
-        grey_3 = np.sqrt(grey_3)
-        min = np.amin(grey_3)
-        grey_3 = grey_3 - min
-        max = np.amax(grey_3)
-        grey_3 = grey_3 * 255/max
-        grey_3 = np.stack((grey_3,)*3, axis=-1)
-        grey_3 = grey_3.astype(np.uint8)
-        print(grey_3.shape)
-        im = Image.fromarray(grey_3)
-        im.save('./maps/'+filename+"_grey_3.png")        
-
-
-
-        data = data.astype(np.uint8)
-        
-        '''
         # ------------------------- Increase image range to 0, 255
 
         img = img.astype(np.float64)
@@ -183,7 +140,21 @@ for idx, f in enumerate(filelist):
         im = Image.fromarray(img[:, :, 0:3])
         im.save('./maps/'+filename+"_denoised.png")
 
+        # ------------------------- Increase image range to 0, 255
+
+        img = img.astype(np.float64)
+        for band in range(0, img.shape[2]):
+            min = np.amin(img[:,:, band])
+            img[:,:, band] = img[:,:, band] - min
+            max = np.amax(img[:,:, band])
+            img[:,:, band] *= 255.0/max
+        img = img.astype(np.uint8)
+
+        im = Image.fromarray(img[:, :, 0:3])
+        im.save('./maps/'+filename+"_denoised.png")
+
         # ------------------------- Clustering through K-Means
+
         img = img.astype(np.float32)
         # re-shape to get 1D array for each layer (a*b, number of bands)
         img = img.reshape((-1, img.shape[2]))

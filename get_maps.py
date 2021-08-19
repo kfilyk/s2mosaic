@@ -62,28 +62,30 @@ def get_all_bands_request(time_interval):
     )
 
 
-evalscript_RGB_band = """
+evalscript_l2a = """
     //VERSION=3
     function setup() {
         return {
             input: [{
-                bands: ["B02", "B03", "B04"],
+                bands: ["B02", "B03", "B04", "SCL"],
+                units: "reflectance"
+
             }],
             output: {
-                bands: 3,
-                sampleType: "UINT8",
+                bands: 4,
+                sampleType: "FLOAT32",
             },
         };
     }
 
     function evaluatePixel(sample) {
-        return [sample.B02*255, sample.B03*255, sample.B04*255];
+        return [sample.B02, sample.B03, sample.B04, sample.SCL];
     }
 """
 
 def get_rgb_map_request(time_interval):
     return SentinelHubRequest(
-        evalscript=evalscript_RGB_band,
+        evalscript=evalscript_l2a,
         input_data=[
             SentinelHubRequest.input_data(
                 data_collection=DataCollection.SENTINEL2_L2A, # L2A atmospheric corrected data
@@ -135,13 +137,13 @@ def plot_probabilities(image, proba, factor=3.5/255):
     ax = plt.subplot(1, 2, 2)
     ax.imshow(proba, cmap=plt.cm.inferno)
 
+# return band scaled between range 0, 255
 def get_scaled_band(idx, map):
-    b = map[:, :, idx].astype(np.float32)*255
+    b = map[:, :, idx]*255
     min = np.amin(b)
     b = b - min
     max = np.amax(b)
     b = b*255/max
-    b = b.astype(np.uint8)
     return b
 
 # sign in to sentinelhub
@@ -224,7 +226,6 @@ for s in sites:
     
     rgb_list_of_requests = [get_rgb_map_request(slot) for slot in slots]
     rgb_list_of_requests = [request.download_list[0] for request in rgb_list_of_requests] # now have a list of requests
-
     list_of_requests = [get_all_bands_request(slot) for slot in slots]
     list_of_requests = [request.download_list[0] for request in list_of_requests] # now have a list of 
 
@@ -239,34 +240,57 @@ for s in sites:
 
 
     # Download if rgb raw maps exist, load if not.
-    rgb_raw_maps_file_name = "rgb_raw_maps.npy"
-    rgb_raw_maps = []
-    if not os.path.exists(folder_path+"/"+rgb_raw_maps_file_name):
-        print(DEBUG_FILE_OPERATION+rgb_raw_maps_file_name+" file does not exist for ",s,sites[s]," downloading...")
-        # Download maps
-        rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
-        # Save raw maps
-        print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-        np.save(folder_path+"/"+rgb_raw_maps_file_name, rgb_raw_maps)
-    else:
-        # Load saved maps
-        rgb_raw_maps = np.load(folder_path+"/"+rgb_raw_maps_file_name)
-        print(DEBUG_TILE_QUERY+" Loading in "+rgb_raw_maps_file_name+" for "+ s,sites[s])
+    l2a_raw_maps_file_names = ["l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
+    l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
+
+    #rgb_raw_maps_file_name = "rgb_raw_maps.npy"
+    #rgb_raw_maps = []
+    for idx, map in enumerate(l2a_raw_maps):
+        for band, f in enumerate(l2a_raw_maps_file_names):
+            if not os.path.exists(folder_path+"/"+slots[idx][1]):
+                Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
+                #print(DEBUG_FILE_OPERATION+f+" file does not exist for ",s, sites[s]," downloading...")
+                # Download maps
+                #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
+                # Save raw maps
+                #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
+                #np.save(folder_path+"/"+f, rgb_raw_maps)
+                #print(map[:, :, band].shape)
+                #print(folder_path+"/"+slots[idx][1]+"/"+f)
+            if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
+                print(np.amin(map[:,:, band]))
+                print(np.amax(map[:,:, band]))
+                b = (map[:,:, band]*255).astype(np.uint8)
+                im = Image.fromarray(b)
+                im.save(folder_path+"/"+slots[idx][1]+"/"+f)
+            """
+            else:
+                # Load saved maps
+                rgb_raw_maps = np.load(folder_path+"/"+f)
+                print(DEBUG_TILE_QUERY+" Loading in "+f+" for "+ s,sites[s])
+            """
 
     # Download if raw maps exist, load if not.
-    raw_maps_file_name = "raw_maps.npy"
-    raw_maps = []
-    if not os.path.exists(folder_path + "/" + raw_maps_file_name):
-        print(DEBUG_FILE_OPERATION+raw_maps_file_name+" file does not exist for ",s,sites[s]," downloading...")
-        # Download maps
-        raw_maps = np.array(SentinelHubDownloadClient(config=config).download(list_of_requests, max_threads=5), dtype= np.float32)
-        # Save raw maps
-        print(DEBUG_TILE_QUERY+" Downloaded raw map tiles for ",s,sites[s])
-        np.save(folder_path+"/"+raw_maps_file_name, raw_maps)
-    else:
-        # Load saved maps
-        raw_maps = np.load(folder_path + "/" + raw_maps_file_name)
-        print(DEBUG_TILE_QUERY+" Loading in "+ raw_maps_file_name+" for "+s,sites[s])
+    l1c_raw_maps_file_names = ["l1c_b01.png","l1c_b02.png","l1c_b03.png","l1c_b04.png","l1c_b05.png","l1c_b06.png","l1c_b07.png","l1c_b08.png","l1c_b8a.png","l1c_b09.png","l1c_b10.png","l1c_b11.png","l1c_b12.png"]
+    l1c_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(list_of_requests, max_threads=5), dtype= np.float32)
+
+    #raw_maps_file_name = "raw_maps.npy"
+    #raw_maps = []
+    for idx, map in enumerate(l1c_raw_maps):
+        for band, f in enumerate(l1c_raw_maps_file_names):
+            if not os.path.exists(folder_path+"/"+slots[idx][1]):
+                Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
+
+                #print(DEBUG_FILE_OPERATION+f+" file does not exist for ",s, sites[s]," downloading...")
+                # Download maps
+                #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
+                # Save raw maps
+                #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
+                #np.save(folder_path+"/"+f, rgb_raw_maps)
+            if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
+                b = (map[:,:, band]*255).astype(np.uint8)
+                im = Image.fromarray(b)
+                im.save(folder_path+"/"+slots[idx][1]+"/"+f)
 
     # # If downloaded tile bad
     # is_all_zero = np.all(rgb_raw_maps == 0)
@@ -287,41 +311,18 @@ for s in sites:
     # else:
     #     print('Raw maps has non-zero items')
 
-    for m in range(0, len(rgb_raw_maps)):
-
-        # RGB image
-        rgb_map = rgb_raw_maps[m]
+    for idx, l1c_map in enumerate(l1c_raw_maps):
 
         # Brighten image for viewing purposes
-        # rgb_map = rgb_map.astype(np.float64)
-        # for band in range(0, 3):
-        #     # print("band shape: ", rgb_map[:, :, band].shape)
-        #     min = np.amin(rgb_map[:, :, band])
-        #     # print("min: ", min)
-        #     rgb_map[:,:, band] = rgb_map[:,:,band]-min
-        #     max = np.amax(rgb_map[:,:,band])
-        #     # print("max: ", max)
-        #     rgb_map[:, :, band] *= (255.0/float(max))
-        #     # print("min: ", np.amin(rgb_map[:, :, band]))
-        #     # print("max: ", np.amax(rgb_map[:, :, band]))
-        # rgb_map = rgb_map.astype(np.uint8)
-
-        # img_rgb = Image.fromarray(rgb_map[:, :, [2,1,0]], 'RGB')
-        # img_rgb.show()
-        
-        # The ghetto way to display and brighten image for funs
-        # for_native_preview_rgb_map = np.dstack([rgb_map[:, :, 2],rgb_map[:, :, 1],rgb_map[:, :, 0]])*2
-        # img_rgb = Image.fromarray(for_native_preview_rgb_map, 'RGB')
-        
-
+        for band in range(0, l1c_map.shape[2]):
+            l1c_map[:, :, band] = get_scaled_band(band, l1c_map)
 
         # ------------------ Cloud Detection Begins
 
         # none rgb images
-        the_map = raw_maps[m]
 
-        bands = the_map[..., :-1]
-        mask = the_map[..., -1]
+        bands = l1c_map[..., :-1]
+        mask = l1c_map[..., -1]
 
         # print("bands: ", bands)
         # print("mask: ", mask)
@@ -336,25 +337,25 @@ for s in sites:
 
         # Cloud prob data saving
         cloud_prob = []
-        if not os.path.exists(folder_path+"/cloud_prob-"+str(m)+".npy"):
-            print(DEBUG_CLOUD_DETECTION+" Running cloud probability detector for "+s,sites[s]," pic ", m)
+        if not os.path.exists(folder_path+"/"+slots[idx][1]+"/cloud_prob.png"):
+            print(DEBUG_CLOUD_DETECTION+" Running cloud probability detector for "+s,sites[s]," pic ", idx)
             start_time = time.time()
             cloud_prob = cloud_detector.get_cloud_probability_maps(bands)
-            print(DEBUG_CLOUD_DETECTION+" Cloud probability detector took ", time.time() - start_time," for "+s,sites[s]," pic ", m)
-            np.save(folder_path+"/cloud_prob-"+str(m), cloud_prob)
-        else:
-            cloud_prob = np.load(folder_path+"/cloud_prob-"+str(m)+".npy")
+            print(DEBUG_CLOUD_DETECTION+" Cloud probability detector took ", time.time() - start_time," for "+s,sites[s]," pic ", idx)
+            cloud_prob = cloud_prob.astype(np.uint8)
+            im = Image.fromarray(cloud_prob)
+            im.save(folder_path+"/"+slots[idx][1]+"/cloud_prob.png")
 
         # Cloud mask data saving
         cloud_mask = []
-        if not os.path.exists(folder_path+"/cloud_mask-"+str(m)+".npy"): 
-            print(DEBUG_CLOUD_DETECTION+"Running cloud mask detector for "+s,sites[s]," pic ",m)
+        if not os.path.exists(folder_path+"/"+slots[idx][1]+"/cloud_mask.png"): 
+            print(DEBUG_CLOUD_DETECTION+"Running cloud mask detector for "+s,sites[s]," pic ",idx)
             start_time = time.time()
             cloud_mask = cloud_detector.get_cloud_masks(bands)
-            print(DEBUG_CLOUD_DETECTION+" Cloud mask detector took ", time.time() - start_time," for "+s,sites[s]," pic ",m)
-            np.save(folder_path+"/cloud_mask-"+str(m), cloud_mask)
-        else:
-            cloud_mask = np.load(folder_path+"/cloud_mask-"+str(m)+".npy")
+            print(DEBUG_CLOUD_DETECTION+" Cloud mask detector took ", time.time() - start_time," for "+s,sites[s]," pic ",idx)
+            cloud_mask = cloud_mask.astype(np.uint8)            
+            im = Image.fromarray(cloud_mask)
+            im.save(folder_path+"/"+slots[idx][1]+"/cloud_mask.png")
 
         # print("Cloud prob: ", cloud_prob)
         # print("Cloud mask:  ", cloud_mask)
@@ -375,115 +376,18 @@ for s in sites:
             print('Cloud mask contains only 0')
         else:
             print('Cloud mask has non-zero items')
-        plot_image(image=rgb_map, mask=cloud_mask)
+        plot_image(image=l1c_map[:,:, [3,2,1]], mask=cloud_mask)
 
-        print("max infr: ", np.amax(the_map[:, :, 7]))
-        print("min infr: ", np.amin(the_map[:, :, 7]))
-        
-        
-        min = np.amin(the_map[:, :, 0])
-        the_map[:, :, 0] = the_map[:, :, 0] - min
-        max = np.amax(the_map[:, :, 0])
-        # the_map[:, :, 0] *=255/max
-
-        '''
-        # Combined
-        combined_img = np.empty(shape=(the_map[:, :, 0].shape[0],the_map[:, :, 0].shape[1]))
-        for i in range(0, the_map[:, :, 0].shape[0]):
-            for j in range(0, the_map[:, :, 0].shape[1]):
-                combined_img[i,j] = (the_map[i, j, 0] + the_map[i, j, 1] + the_map[i, j, 2] + the_map[i, j, 3])/4
-
-        # Combined
-        combined_img *=255/max
-        combined_img = combined_img.astype(np.uint8)
-        img_combined = Image.fromarray(combined_img, 'L')
-        img_combined.show()
-        '''
+        print("max infr: ", np.amax(l1c_map[:, :, 7]))
+        print("min infr: ", np.amin(l1c_map[:, :, 7]))
         
         # bands: ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "dataMask"],
 
-        b = get_scaled_band(11, the_map) 
+        '''
+        b = get_scaled_band(1, l1c_map) 
         img_b = Image.fromarray(b, 'L')
         img_b.show()
-
-        b = get_scaled_band(12, the_map) 
-        img_b = Image.fromarray(b, 'L')
-        img_b.show()
-
         '''
-        # B1
-        the_map[:, :, 0]*=255
-        b1 = the_map[:, :, 0]
-        min = np.amin(b1)
-        b1 = b1 - min
-        max = np.amax(b1)
-        b1 = b1*255/max
-        b1 = b1.astype(np.uint8)
-
-        print("b1 data type: ", b1.dtype)
-        img_b1 = Image.fromarray(b1, 'L')
-        img_b1.show()
-        '''
-        # Infrared
-        # the_map[:, :, 7]*=255
-        # infrared = the_map[:, :, 7].astype(np.uint8)
-        # print("data type: ", infrared.dtype)
-        # print("after max infr: ", np.amax(infrared))
-        # print("after min infr: ", np.amin(infrared))
-        # img_infr = Image.fromarray(infrared, 'L')
-        # img_infr.show()
-
-        # B09
-        '''
-        the_map[:, :, 9]*=255
-        b9 = the_map[:, :, 9]
-        min = np.amin(b9)
-        b9 = b9 - min
-        max = np.amax(b9)
-        b9 = b9*255/max
-        b9 = b9.astype(np.uint8)
-
-        print("b9 data type: ", b9.dtype)
-        img_b9 = Image.fromarray(b9, 'L')
-        img_b9.show()
-        '''
-
-        '''
-        # B10
-        the_map[:, :, 10]*=255
-        b10 = the_map[:, :, 9]
-        min = np.amin(b10)
-        b10 = b10 - min
-        max = np.amax(b10)
-        b10 = b10*255/max
-        
-        b10 = b10.astype(np.uint8)
-
-        print("b10 data type: ", b10.dtype)
-        print("after max b10: ", np.amax(b10))
-        print("after min b10: ", np.amin(b10))
-        img_b10 = Image.fromarray(b10, 'L')
-        img_b10.show()
-        '''
-        # B11
-        # the_map[:, :, 11]*=255
-        # b11 = the_map[:, :, 11].astype(np.uint8)
-        # print("b11 data type: ", b11.dtype)
-        # print("after max b11: ", np.amax(b11))
-        # print("after min b11: ", np.amin(b11))
-        # img_b11 = Image.fromarray(b11, 'L')
-        # img_b11.show()
-
-        # B12
-        # the_map[:, :, 12]*=255
-        # b12 = the_map[:, :, 12].astype(np.uint8)
-        # print("b12 data type: ", b12.dtype)
-        # print("after max b12: ", np.amax(b12))
-        # print("after min b12: ", np.amin(b12))
-        # img_b12 = Image.fromarray(b12, 'L')
-        # img_b12.show()
-
-
 
         # print("cloud probability: ", cloud_prob)
         # print("cloud probability shape: ", cloud_prob.shape)
@@ -509,126 +413,3 @@ for s in sites:
         
         # img_prob = Image.fromarray(cloud_prob, 'L')
         # img_prob.show()
-
-
-    #     """
-    #     map[:, :, 4] = gaussian_filter(map[:, :, 4], sigma=3)
-    #     for idx, x in np.ndenumerate(map[:, :, 4]):
-    #         if map[idx[0], idx[1], 4] > 0: # if non-zero, indicates some presence of clouds
-    #             map[idx[0], idx[1], 0] = 0 # R
-    #             map[idx[0], idx[1], 1] = 0 # G
-    #             map[idx[0], idx[1], 2] = 0 # B
-    #             map[idx[0], idx[1], 3] = 0 # IR
-    #     for i in range(0, 5):  # R, G, B, IR all need to be normalized
-    #         min = np.amin(map[:, :, i]) # i==4 has range between 0-100
-    #         map[:, :, i] -= min  # center min = 0
-    #         max = np.amax(map[:, :, i])
-    #         map[:, :, i] *= (255/max) # converts to range 0, 255
-    #     """
-    #     # maps[m] = map
-    #     # map = map.astype(np.uint8) # convert to int8
-
-
-    #     # detected_clouds = np.copy(map[:, :, 5])
-
-        # for i in range(0, map.shape[0]):
-            # for j in range(0, map.shape[1]):
-
-                # Using SCL, CLP, set land to be black, we will reclaim cloud lost on land from this later on
-                # We're doing this here before SCL values are changed later
-                # if (map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 0 or map[i, j, 4] == 1 or map[i, j, 4] == 2) and map[i, j, 5]/255 >= 0:
-                #     detected_clouds[i, j] = 0
-                
-                # #SCL layer
-                # if map[i, j, 4] == 10: # cirrus clouds
-                #     map[i, j, 4] = 225
-                # elif map[i, j, 4] == 7: # low prob. clouds
-                #     map[i, j, 4] = 235
-                # elif map[i, j, 4] == 8: # med prob. clouds
-                #     map[i, j, 4] = 245
-                # elif map[i, j, 4] == 9:# high prob. clouds
-                #     map[i, j, 4] = 255
-                # elif map[i, j, 4] == 4 or map[i, j, 4] == 5 or map[i, j, 4] == 0 or map[i, j, 4] == 1 or map[i, j, 4] == 2: # ground/defect pixels
-                #     map[i, j, 4] = 100
-                # else: 
-                #     # water is black, but not completely 0
-                #     map[i, j, 4] = 0
-
-                #     # Make our marked clouds array's water also to completely black except for where there are clouds
-                #     if detected_clouds[i, j] < 14: # Where 14 is the cut off threshold
-                #         detected_clouds[i, j] = 0
-
-
-                # #CLP
-                # if map[i, j, 5]/255 >= 0.25:
-                #     map[i, j, 5] = 225
-                # else:
-                #     map[i, j, 5] = 0
-
-
-                # clp layer    
-                # if map[i, j, 5] < 4: # guarantee not cloud
-                #     map[i, j, 5] = 4
-                
-        # map[:, :, 5] - 4 # min of 0
-        # min_clp = 4
-        # max_clp = np.amax(map[:, :, 5]) # somewhere around ~251, lets say
-        # map[:, :, 5]*(255/max_clp) # gives a ceil of 255
-
-        # find definite clouds over land set to 255 and then blur it
-
-                
-        #map[:, :, 5] = map[:, :, 5]*2.55 # clouds = 7, 8,9
-
-        # img_rgb = Image.fromarray(map[:, :, [2, 1, 0]], 'RGB')
-        # img_b08 = Image.fromarray(map[:, :, 3], 'L') # 
-        # img_scl = Image.fromarray(map[:, :, 4], 'L') # 
-        # img_clp = Image.fromarray(map[:, :, 5], 'L')
-        # img_aot = Image.fromarray(map[:, :, 6], 'L') # useless
-        # img_cld = Image.fromarray(map[:, :, 7], 'L') # useless
-        # img_detected_clouds = Image.fromarray(detected_clouds, 'L')
-
-        # img_rgb.show()
-        # img_b08.show()
-        # img_scl.show()
-        # img_clp.show()
-        # img_aot.show()
-        # img_cld.show()
-        # img_detected_clouds.show()
-
-
-    # maps = maps.astype(np.uint8) # multiple days of maps
-
-
-    """
-    # generate folder
-    Path(folder_path).mkdir(parents=True, exist_ok=True)
-    for i in range(0, 4):
-        col = ''
-        if i == 0:
-            col = 'B'
-        elif i == 1:
-            col = 'G'
-        elif i == 2:
-            col = 'R'
-        elif i == 3:
-            col = 'IR'
-
-        data_path = folder_path + '/'+col + 
-            '.png'  # 106.0_13.0_1.jpg
-        print(data_path)
-        im = Image.fromarray(bands[:, :, i])
-        im.save(data_path)
-
-    # img = Image.fromarray(bands[:, :, [2, 1, 0]], 'RGB')
-    # img.show()
-    img.save(folder_path+'/col.png')
-    """
-        #     else:
-        #         print("PATH EXISTS ALREADY...")
-        #     y = round(y+y_delta, 1)
-        #     break
-        # break
-        # x = round(x+x_delta, 1)
-        # y = start_y
-# plt.show()
