@@ -17,7 +17,7 @@ import time
 
 
 # b02 red b03 green b04 blue ; CLD = sentinel2 cloud detection
-evalscript_all_bands = """
+evalscript_l1c = """
     //VERSION=3
     function setup() {
         return {
@@ -40,9 +40,9 @@ evalscript_all_bands = """
 # return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.CLM];
 #mosaicking: "ORBIT"
 
-def get_all_bands_request(time_interval):
+def get_l1c_request(time_interval):
     return SentinelHubRequest(
-        evalscript=evalscript_all_bands,
+        evalscript=evalscript_l1c,
         input_data=[
             SentinelHubRequest.input_data(
                 data_collection=DataCollection.SENTINEL2_L1C, 
@@ -69,11 +69,10 @@ evalscript_l2a = """
             input: [{
                 bands: ["B02", "B03", "B04", "SCL"],
                 units: "reflectance"
-
             }],
             output: {
                 bands: 4,
-                sampleType: "FLOAT32",
+                sampleType: "UINT8",
             },
         };
     }
@@ -83,7 +82,7 @@ evalscript_l2a = """
     }
 """
 
-def get_rgb_map_request(time_interval):
+def get_l2a_request(time_interval):
     return SentinelHubRequest(
         evalscript=evalscript_l2a,
         input_data=[
@@ -224,10 +223,10 @@ for s in sites:
         last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length)
     print(DEBUG_TILE_QUERY, len(slots), " tiles to download for ", s, sites[s]) # should have a number of time intervals
     
-    rgb_list_of_requests = [get_rgb_map_request(slot) for slot in slots]
-    rgb_list_of_requests = [request.download_list[0] for request in rgb_list_of_requests] # now have a list of requests
-    list_of_requests = [get_all_bands_request(slot) for slot in slots]
-    list_of_requests = [request.download_list[0] for request in list_of_requests] # now have a list of 
+    l2a_list_of_requests = [get_l2a_request(slot) for slot in slots]
+    l2a_list_of_requests = [request.download_list[0] for request in l2a_list_of_requests] # now have a list of requests
+    l1c_list_of_requests = [get_l1c_request(slot) for slot in slots]
+    l1c_list_of_requests = [request.download_list[0] for request in l1c_list_of_requests] # now have a list of 
 
     # raw_maps = np.array(map_requests.get_data(), dtype=np.float64) # get array of all maps - note that SCL cloud cover map
     # print("raw_maps shape: ", raw_maps.shape)  # should be like (3, 13259,1399, 5)
@@ -241,7 +240,8 @@ for s in sites:
 
     # Download if rgb raw maps exist, load if not.
     l2a_raw_maps_file_names = ["l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
-    l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
+    l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)
+    print("FLAG1")
 
     #rgb_raw_maps_file_name = "rgb_raw_maps.npy"
     #rgb_raw_maps = []
@@ -272,7 +272,8 @@ for s in sites:
 
     # Download if raw maps exist, load if not.
     l1c_raw_maps_file_names = ["l1c_b01.png","l1c_b02.png","l1c_b03.png","l1c_b04.png","l1c_b05.png","l1c_b06.png","l1c_b07.png","l1c_b08.png","l1c_b8a.png","l1c_b09.png","l1c_b10.png","l1c_b11.png","l1c_b12.png"]
-    l1c_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(list_of_requests, max_threads=5), dtype= np.float32)
+    l1c_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l1c_list_of_requests, max_threads=5), dtype= np.float32)
+    print("FLAG2")
 
     #raw_maps_file_name = "raw_maps.npy"
     #raw_maps = []
