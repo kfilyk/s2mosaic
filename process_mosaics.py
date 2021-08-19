@@ -25,37 +25,50 @@ print(files)
 print('\n')
 print(filelist)
 '''
-filelist.append('./maps/accra/accra_rgb.png')
-files.append('accra_rgb.png')
+filelist.append('./maps/accra/rgb.png')
+files.append('rgb.png')
 
 for idx, f in enumerate(filelist):
     filename = os.path.splitext(files[idx])[0]
     with open(f, 'r'):
         image = Image.open(f)
         img = np.asarray(image)
+        print("IMG SHAPE: ", img.shape)
 
-        # turn into multichannel
+        # if greyscale, turn into multichannel
         if img.ndim == 2:
-            img = np.stack((img,)*3, axis=-1)
-        elif img.shape[2] == 4: # get rid of alpha chan
-            img = img[:,:,0:3] 
-
-        # ------------------------- Add B09 Band For Cloud Detection 
-
-        b09_image = Image.open('./maps/accra/accra_b09.png')
-        b09 = np.asarray(b09_image, dtype = np.float32)
-        print("B09 SHAPE: ", b09.shape)
-        img= np.insert(img, img.shape[2], b09, axis = 2) # insert b09 band to alpha layer
-        print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
-        og_shape = img.shape
+            img = img[:, :, np.newaxis]
+        elif img.shape[2] == 4: # get rid of pre-existing alpha channel
+            img = img[:, :, 0:3]
+        print("IMG SHAPE: ", img.shape)
 
         # ------------------------- Add CLP Map For Cloud Detection 
 
-        clp_image = Image.open('./maps/accra/accra_clp.png')
-        clp = np.asarray(clp_image, dtype = np.float32)
-        print("B09 SHAPE: ", clp.shape)
-        img= np.insert(img, img.shape[2], b09, axis = 2) # insert b09 band to alpha layer
+        b_image = Image.open('./maps/accra/clp.png')
+        b = np.asarray(b_image, dtype = np.float32)
+        b = b[:,:,0]
+        img= np.insert(img, img.shape[2], b, axis = 2) # insert b09 band to alpha layer
         print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
+        
+
+        # ------------------------- Add B09 Band For Cloud Detection 
+
+        b_image = Image.open('./maps/accra/b09.png')
+        b = np.asarray(b_image, dtype = np.float32)
+        img= np.insert(img, img.shape[2], b, axis = 2) # insert b09 band to alpha layer
+        print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
+
+        '''
+        # ------------------------- Add B01 Band For Cloud Detection 
+
+        b_image = Image.open('./maps/accra/b01.png')
+        b = np.asarray(b_image, dtype = np.float32)
+        img= np.insert(img, img.shape[2], b, axis = 2) # insert b09 band to alpha layer
+        print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
+        '''
+
+        # ------------------------- Save Shape
+
         og_shape = img.shape
 
         # ------------------------- Add B01 Band For Cloud Detection 
@@ -153,14 +166,20 @@ for idx, f in enumerate(filelist):
         # ------------------------- Denoise 
 
         img = img.astype(np.uint8)
-        alpha = img[:,:,3]
-        alpha2 = img[:,:,4]
-        img = cv2.fastNlMeansDenoisingColored(img[:,:,0:3], None, 10, 30, 21, 7)
-        alpha = cv2.fastNlMeansDenoising(alpha, None, 30, 21, 7)
-        alpha2 = cv2.fastNlMeansDenoising(alpha2, None, 30, 21, 7)
+        img2 = cv2.fastNlMeansDenoisingColored(img[:,:,0:3], None, 10, 30, 21, 7)
+        if img.shape[2]>=4:
+            alpha = cv2.fastNlMeansDenoising(img[:,:,3], None, 30, 21, 7)
+            img2= np.insert(img2, 3, alpha, axis = 2) # insert b09 band to alpha layer
+        if img.shape[2]>=5:
+            alpha = cv2.fastNlMeansDenoising(img[:,:,4], None, 30, 21, 7)
+            img2= np.insert(img2, 4, alpha, axis = 2) # insert b09 band to alpha layer
+        if img.shape[2]>=6:
+            alpha = cv2.fastNlMeansDenoising(img[:,:,5], None, 30, 21, 7)
+            img2= np.insert(img2, 5, alpha, axis = 2) # insert b09 band to alpha layer
 
-        img= np.insert(img, 3, alpha, axis = 2) # insert b09 band to alpha layer
-        img= np.insert(img, 4, alpha2, axis = 2) # insert b09 band to alpha layer
+        img = img2
+        print("IMAGE SHAPE: ", img.shape)
+
         im = Image.fromarray(img[:, :, 0:3])
         im.save('./maps/'+filename+"_denoised.png")
 
@@ -169,7 +188,7 @@ for idx, f in enumerate(filelist):
         # re-shape to get 1D array for each layer (a*b, number of bands)
         img = img.reshape((-1, img.shape[2]))
 
-        #print("IMAGE RE-SHAPED: ", img.shape)
+        print("IMAGE RE-SHAPED: ", img.shape)
         attempts = 10
         K = 12
         ret, label, center = cv2.kmeans(
@@ -182,6 +201,8 @@ for idx, f in enumerate(filelist):
         # print(images.reshape((images.shape[1], images.shape[2], 3)).shape)
         img = res.reshape(og_shape)
         im = Image.fromarray(img[:, :, 0:3])
+        im = Image.fromarray(img[:, :, [0, 4, 3]]) # false colour using R, b09, clp
+
         im.save('./maps/'+filename+"_quantized.png")
 
         # ------------------------- Edge detecting with Canny

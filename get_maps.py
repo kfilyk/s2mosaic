@@ -17,7 +17,7 @@ import time
 
 
 # b02 red b03 green b04 blue ; CLD = sentinel2 cloud detection
-evalscript_10m_bands = """
+evalscript_all_bands = """
     //VERSION=3
     function setup() {
         return {
@@ -40,9 +40,9 @@ evalscript_10m_bands = """
 # return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.CLM];
 #mosaicking: "ORBIT"
 
-def get_map_request(time_interval):
+def get_all_bands_request(time_interval):
     return SentinelHubRequest(
-        evalscript=evalscript_10m_bands,
+        evalscript=evalscript_all_bands,
         input_data=[
             SentinelHubRequest.input_data(
                 data_collection=DataCollection.SENTINEL2_L1C, 
@@ -135,8 +135,14 @@ def plot_probabilities(image, proba, factor=3.5/255):
     ax = plt.subplot(1, 2, 2)
     ax.imshow(proba, cmap=plt.cm.inferno)
 
-
-
+def get_scaled_band(idx, map):
+    b = map[:, :, idx].astype(np.float32)*255
+    min = np.amin(b)
+    b = b - min
+    max = np.amax(b)
+    b = b*255/max
+    b = b.astype(np.uint8)
+    return b
 
 # sign in to sentinelhub
 config = SHConfig()
@@ -219,7 +225,7 @@ for s in sites:
     rgb_list_of_requests = [get_rgb_map_request(slot) for slot in slots]
     rgb_list_of_requests = [request.download_list[0] for request in rgb_list_of_requests] # now have a list of requests
 
-    list_of_requests = [get_map_request(slot) for slot in slots]
+    list_of_requests = [get_all_bands_request(slot) for slot in slots]
     list_of_requests = [request.download_list[0] for request in list_of_requests] # now have a list of 
 
     # raw_maps = np.array(map_requests.get_data(), dtype=np.float64) # get array of all maps - note that SCL cloud cover map
@@ -393,7 +399,18 @@ for s in sites:
         img_combined = Image.fromarray(combined_img, 'L')
         img_combined.show()
         '''
+        
+        # bands: ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "dataMask"],
 
+        b = get_scaled_band(11, the_map) 
+        img_b = Image.fromarray(b, 'L')
+        img_b.show()
+
+        b = get_scaled_band(12, the_map) 
+        img_b = Image.fromarray(b, 'L')
+        img_b.show()
+
+        '''
         # B1
         the_map[:, :, 0]*=255
         b1 = the_map[:, :, 0]
@@ -406,7 +423,7 @@ for s in sites:
         print("b1 data type: ", b1.dtype)
         img_b1 = Image.fromarray(b1, 'L')
         img_b1.show()
-
+        '''
         # Infrared
         # the_map[:, :, 7]*=255
         # infrared = the_map[:, :, 7].astype(np.uint8)
