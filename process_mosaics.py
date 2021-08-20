@@ -38,20 +38,19 @@ b = Image.open(filepath+'l2a_b04.png')
 img = np.asarray(r)
 img_g = np.asarray(g)
 img_b = np.asarray(b)
-
+img = img[:, :, np.newaxis]
 img= np.insert(img, img.shape[2], img_g, axis = 2) # insert b09 band to alpha layer
 img= np.insert(img, img.shape[2], img_b, axis = 2) # insert b09 band to alpha layer
 
 print("IMG SHAPE: ", img.shape)
 
-im = Image.fromarray(img[:, :, 0:3])
+im = Image.fromarray(img[:, :, [2,1,0]])
 im.save(filepath+filename+"_rgb.png")
 
 # ------------------------- Add CLP Map For Cloud Detection 
 
 b_image = Image.open(filepath+'cloud_prob.png')
 b = np.asarray(b_image, dtype = np.float32)
-b = b[:,:,0]
 img= np.insert(img, img.shape[2], b, axis = 2) # insert b09 band to alpha layer
 print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
 
@@ -177,8 +176,6 @@ res = center[label.flatten()]
 # print(images.reshape((images.shape[1], images.shape[2], 3)).shape)
 img = res.reshape(og_shape)
 im = Image.fromarray(img[:, :, 0:3])
-im = Image.fromarray(img[:, :, [0, 4, 3]]) # false colour using R, b09, clp
-
 im.save(filepath+filename+"_clustered.png")
 
 # ------------------------- Edge detecting with Canny
