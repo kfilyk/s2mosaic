@@ -171,7 +171,6 @@ sites['accra'] = [-0.20, 5.40, 0.20, 5.60]
 
 DEBUG_FILE_OPERATION = "[File_OPERATION] "
 DEBUG_TILE_QUERY = "[TILE_QUERY] "
-DEBUG_TILE_OPERATION = "[TILE_OPERATION] "
 DEBUG_POSSIBLE_ERR = "[POSSIBLE_ERR]"
 DEBUG_CLOUD_DETECTION = "[CLOUD_DETECTION] "
 
@@ -233,85 +232,68 @@ for s in sites:
     l1c_list_of_requests = [get_l1c_request(slot) for slot in slots]
     l1c_list_of_requests = [request.download_list[0] for request in l1c_list_of_requests] 
 
-    # raw_maps = np.array(map_requests.get_data(), dtype=np.float64) # get array of all maps - note that SCL cloud cover map
-    # print("raw_maps shape: ", raw_maps.shape)  # should be like (3, 13259,1399, 5)
-    # print("raw_maps data type: ", raw_maps.dtype)
-    # maps = np.copy(raw_maps)
-    # average_map = np.zeros_like(maps[0, :, :, :4]) # create a single map instance of size (w, h, 4) instead of 5
-    # pixel_count = np.zeros_like(maps[0, :, :]) # counts how many different sub map values have been accumulated for a given pixel location
-    # print(average_map.shape)  # should be like (3, 13259,1399, 5)
-    # print(pixel_count.shape)  # should be like (3, 13259,1399, 5)]
-
-    # Download if rgb raw maps exist, load if not.
     l2a_raw_maps_file_names = ["l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
-    l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)
+    l2a_raw_maps = []
+    if not os.path.exists(folder_path+"/l2a_raw_maps.npy"):
+        print(DEBUG_TILE_QUERY+" Beginning l2a_raw_maps download for ", s, sites[s])
+        l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)print
+        np.save(folder_path+"/l2a_raw_maps", l2a_raw_maps)
+        print(DEBUG_TILE_QUERY+" Finished l2a_raw_maps download for ", s, sites[s])
+    else:
+        print(DEBUG_TILE_QUERY+" l2a_raw_maps loaded for ", s, sites[s])
+        np.load(folder_path+"/l2a_raw_maps.npy")
 
-    #rgb_raw_maps_file_name = "rgb_raw_maps.npy"
-    #rgb_raw_maps = []
+    # Create directory for the different days with picture of each band
     for idx, map in enumerate(l2a_raw_maps):
         for band, f in enumerate(l2a_raw_maps_file_names):
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
-                #print(DEBUG_FILE_OPERATION+f+" file does not exist for ",s, sites[s]," downloading...")
-                # Download maps
-                #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
-                # Save raw maps
-                #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                #np.save(folder_path+"/"+slots[idx][1]+"/"+f, l2a_raw_maps)
-                #print(map[:, :, band].shape)
-                #print(folder_path+"/"+slots[idx][1]+"/"+f)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
                 b = get_scaled_band(band, map)
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
                 im.save(folder_path+"/"+slots[idx][1]+"/"+f)
-            """
-            else:
-                # Load saved maps
-                rgb_raw_maps = np.load(folder_path+"/"+f)
-                print(DEBUG_TILE_QUERY+" Loading in "+f+" for "+ s,sites[s])
-            """
 
-    # Download if raw maps exist, load if not.
     l1c_raw_maps_file_names = ["l1c_b01.png","l1c_b02.png","l1c_b03.png","l1c_b04.png","l1c_b05.png","l1c_b06.png","l1c_b07.png","l1c_b08.png","l1c_b8a.png","l1c_b09.png","l1c_b10.png","l1c_b11.png","l1c_b12.png"]
-    l1c_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l1c_list_of_requests, max_threads=5), dtype= np.float32)
+    l1c_raw_maps = []
+    if not os.path.exists(folder_path+"/l1c_raw_maps.npy"):
+        print(DEBUG_TILE_QUERY+" Beginning l1c_raw_maps download for ", s, sites[s])
+        l1c_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l1c_list_of_requests, max_threads=5), dtype= np.float32)
+        np.save(folder_path+"/l1c_raw_maps", l1c_raw_maps)
+        print(DEBUG_TILE_QUERY+" Finished l1c_raw_maps download for ", s, sites[s])
+    else:
+        print(DEBUG_TILE_QUERY+" l1c_raw_maps loaded for ", s, sites[s])
+        np.load(folder_path+"/l1c_raw_maps.npy")
+
     
-    #raw_maps_file_name = "raw_maps.npy"
-    #raw_maps = []
     for idx, map in enumerate(l1c_raw_maps):
         for band, f in enumerate(l1c_raw_maps_file_names):
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
-                #print(DEBUG_FILE_OPERATION+f+" file does not exist for ",s, sites[s]," downloading...")
-                # Download maps
-                #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
-                # Save raw maps
-                #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                #np.save(folder_path+"/"+slots[idx][1]+"/"+f, l1c_raw_maps)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
                 b = get_scaled_band(band, map)
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
                 im.save(folder_path+"/"+slots[idx][1]+"/"+f)
 
-    # # If downloaded tile bad
-    # is_all_zero = np.all(rgb_raw_maps == 0)
+    # If downloaded tile bad
+    # is_all_zero = np.all(l1c_raw_maps == 0)
     # if is_all_zero:
-    #     print(DEBUG_POSSIBLE_ERR+" Raw rgb maps contains only 0 for "+s,sites[s])
+    #     print(DEBUG_POSSIBLE_ERR+" Raw L1C maps contains only 0 for "+s,sites[s])
     # else:
-    #     print(DEBUG_TILE_OPERATION+" Raw rgb maps has non-zero items for "+s,sites[s])
+    #     print(DEBUG_POSSIBLE_ERR+" Raw L1C maps has non-zero items for "+s,sites[s])
 
-    # print("Raw maps: ", raw_maps)
-    # print("Raw rgb maps shape: ", rgb_raw_maps.shape)  # should be like (3, 13259,1399, 5)
-    # print("Raw rgb maps data type: ", rgb_raw_maps.dtype) # float32 for best results in cloud detection
-    # print("Raw maps shape: ", raw_maps.shape)  # should be like (3, 13259,1399, 5)
-    # print("Raw maps data type: ", raw_maps.dtype) # float32 for best results in cloud detection
+    # print("Raw maps: ", l1c_raw_maps)
+    # print("Raw rgb maps shape: ", l2a_raw_maps.shape)  # should be like (3, 13259,1399, 5)
+    # print("Raw rgb maps data type: ", l2a_raw_maps.dtype) # float32 for best results in cloud detection
+    # print("Raw maps shape: ", l1c_raw_maps.shape)  # should be like (3, 13259,1399, 5)
+    # print("Raw maps data type: ", l1c_raw_maps.dtype) # float32 for best results in cloud detection
 
     # is_all_zero = np.all(raw_maps == 0)
     # if is_all_zero:
-    #     print('Raw maps contains only 0')
+    #     print('Raw L1C maps contains only 0 for '+s,sites[s])
     # else:
-    #     print('Raw maps has non-zero items')
+    #     print('Raw L1C maps has non-zero items for '+s,sites[s])
 
     for idx, l1c_map in enumerate(l1c_raw_maps):
 
@@ -323,7 +305,6 @@ for s in sites:
         # ------------------ Cloud Detection Begins
 
         # none rgb images
-
         bands = l1c_map[..., :-1]
         mask = l1c_map[..., -1]
 
@@ -362,20 +343,15 @@ for s in sites:
             im = Image.fromarray(cloud_mask)
             im.save(folder_path+"/"+slots[idx][1]+"/cloud_mask.png")
 
-        # print("Cloud prob: ", cloud_prob)
-        # print("Cloud mask:  ", cloud_mask)
-        # print("Cloud prob shape: ", cloud_prob.shape)
-        # print("Cloud mask shape: ", cloud_mask.shape)
-
-        # Cloud prob not working properly
+        # Check Cloud Prob data
         is_all_zero = np.all((cloud_prob == 0))
         if is_all_zero:
-            print('Cloud prob contains only 0')
+            print(DEBUG_CLOUD_DETECTION+' Cloud prob contains only 0 for '+s,sites[s])
         else:
-            print('Cloud prob has non-zero items')
+            print(DEBUG_CLOUD_DETECTION+' Cloud prob has non-zero items for '+s,sites[s])
         # plot_probabilities(rgb_map, cloud_prob)
 
-        # Mask working properly
+        # Check Cloud Mask data
         is_all_zero = np.all((cloud_mask == 0))
         if is_all_zero:
             print('Cloud mask contains only 0')
