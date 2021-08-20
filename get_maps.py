@@ -68,7 +68,6 @@ evalscript_l2a = """
         return {
             input: [{
                 bands: ["B02", "B03", "B04", "SCL"],
-                units: "reflectance"
             }],
             output: {
                 bands: 4,
@@ -261,7 +260,7 @@ for s in sites:
                 #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
                 # Save raw maps
                 #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                np.save(folder_path+"/"+f, l2a_raw_maps)
+                np.save(folder_path+"/"+slots[idx][1]+"/"+f, l2a_raw_maps)
                 #print(map[:, :, band].shape)
                 #print(folder_path+"/"+slots[idx][1]+"/"+f)
                 if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
@@ -290,7 +289,7 @@ for s in sites:
                 #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
                 # Save raw maps
                 #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                np.save(folder_path+"/"+f, l1c_raw_maps)
+                np.save(folder_path+"/"+slots[idx][1]+"/"+f, l1c_raw_maps)
                 if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
                     b = (map[:,:, band]*255).astype(np.uint8)
                     im = Image.fromarray(b)
