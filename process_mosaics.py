@@ -107,7 +107,7 @@ img = img.astype(np.uint8)
 # ------------------------- Blur Images
 
 img = cv2.GaussianBlur(img, (15, 15), 0)
-im = Image.fromarray(img[:, :, 0:3])
+im = Image.fromarray(img[:, :, [2,1,0]])
 im.save(filepath+filename+"_blurred.png")
 
 # ------------------------- Increase image range to 0, 255
@@ -141,7 +141,7 @@ if img.shape[2]>=6:
 img = img2
 print("IMAGE SHAPE: ", img.shape)
 
-im = Image.fromarray(img[:, :, 0:3])
+im = Image.fromarray(img[:, :, [2,1,0]])
 im.save(filepath+filename+"_denoised.png")
 
 # ------------------------- Increase image range to 0, 255
@@ -154,7 +154,7 @@ for band in range(0, img.shape[2]):
     img[:,:, band] *= 255.0/max
 img = img.astype(np.uint8)
 
-im = Image.fromarray(img[:, :, 0:3])
+im = Image.fromarray(img[:, :, [2,1,0]])
 im.save(filepath+filename+"_denoised.png")
 
 # ------------------------- Clustering through K-Means
@@ -175,7 +175,7 @@ res = center[label.flatten()]
 # print("RES: ", res.shape)
 # print(images.reshape((images.shape[1], images.shape[2], 3)).shape)
 img = res.reshape(og_shape)
-im = Image.fromarray(img[:, :, 0:3])
+im = Image.fromarray(img[:, :, [2, 1, 0]]) # img[:, :, [4, 3, 0]]
 im.save(filepath+filename+"_clustered.png")
 
 # ------------------------- Edge detecting with Canny
