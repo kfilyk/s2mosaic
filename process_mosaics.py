@@ -25,13 +25,12 @@ print(files)
 print('\n')
 print(filelist)
 '''
-filelist.append('./maps/accra/l1c_rgb_raw.png')
-files.append('l1c_rgb_raw.png')
+filepath = './tiles/accra_-0.2_5.4_0.2_5.6/2021-08-12'
+filelist.append('./maps/accra/l1c_rgb.png')
 
-for idx, f in enumerate(filelist):
-    filename = os.path.splitext(files[idx])[0]
+    filename = 'accra_123'
     with open(f, 'r'):
-        image = Image.open(f)
+        image = Image.open(filepath+ )
         img = np.asarray(image)
         print("IMG SHAPE: ", img.shape)
 

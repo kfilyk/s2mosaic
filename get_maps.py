@@ -217,7 +217,7 @@ for s in sites:
     # get one month of data
     today = datetime.today()
     interval_length = 7 # 7 days
-    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-1)
+    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-6)
     last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
     slots = [] # all weeks of data to be queried
     while today > earliest_date:
@@ -252,20 +252,19 @@ for s in sites:
         for band, f in enumerate(l2a_raw_maps_file_names):
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
-                print("FLAG2")
-
                 #print(DEBUG_FILE_OPERATION+f+" file does not exist for ",s, sites[s]," downloading...")
                 # Download maps
                 #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
                 # Save raw maps
                 #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                np.save(folder_path+"/"+slots[idx][1]+"/"+f, l2a_raw_maps)
+                #np.save(folder_path+"/"+slots[idx][1]+"/"+f, l2a_raw_maps)
                 #print(map[:, :, band].shape)
                 #print(folder_path+"/"+slots[idx][1]+"/"+f)
-                if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                    b = (map[:,:, band]*255).astype(np.uint8)
-                    im = Image.fromarray(b)
-                    im.save(folder_path+"/"+slots[idx][1]+"/"+f)
+            if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
+                b = get_scaled_band(band, map)
+                b = b.astype(np.uint8)
+                im = Image.fromarray(b)
+                im.save(folder_path+"/"+slots[idx][1]+"/"+f)
             """
             else:
                 # Load saved maps
@@ -288,11 +287,12 @@ for s in sites:
                 #rgb_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(rgb_list_of_requests, max_threads=5), dtype= np.float32)
                 # Save raw maps
                 #print(DEBUG_TILE_QUERY+" Successfully downloaded rgb raw map tiles for: ",s, sites[s])
-                np.save(folder_path+"/"+slots[idx][1]+"/"+f, l1c_raw_maps)
-                if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                    b = (map[:,:, band]*255).astype(np.uint8)
-                    im = Image.fromarray(b)
-                    im.save(folder_path+"/"+slots[idx][1]+"/"+f)
+                #np.save(folder_path+"/"+slots[idx][1]+"/"+f, l1c_raw_maps)
+            if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
+                b = get_scaled_band(band, map)
+                b = b.astype(np.uint8)
+                im = Image.fromarray(b)
+                im.save(folder_path+"/"+slots[idx][1]+"/"+f)
 
     # # If downloaded tile bad
     # is_all_zero = np.all(rgb_raw_maps == 0)
@@ -315,10 +315,11 @@ for s in sites:
 
     for idx, l1c_map in enumerate(l1c_raw_maps):
 
+        '''
         # Brighten image for viewing purposes
         for band in range(0, l1c_map.shape[2]):
             l1c_map[:, :, band] = get_scaled_band(band, l1c_map)
-
+        '''
         # ------------------ Cloud Detection Begins
 
         # none rgb images
@@ -344,6 +345,7 @@ for s in sites:
             start_time = time.time()
             cloud_prob = cloud_detector.get_cloud_probability_maps(bands)
             print(DEBUG_CLOUD_DETECTION+" Cloud probability detector took ", time.time() - start_time," for "+s,sites[s]," pic ", idx)
+            cloud_prob *= 255
             cloud_prob = cloud_prob.astype(np.uint8)
             im = Image.fromarray(cloud_prob)
             im.save(folder_path+"/"+slots[idx][1]+"/cloud_prob.png")
@@ -355,6 +357,7 @@ for s in sites:
             start_time = time.time()
             cloud_mask = cloud_detector.get_cloud_masks(bands)
             print(DEBUG_CLOUD_DETECTION+" Cloud mask detector took ", time.time() - start_time," for "+s,sites[s]," pic ",idx)
+            cloud_mask *= 255
             cloud_mask = cloud_mask.astype(np.uint8)            
             im = Image.fromarray(cloud_mask)
             im.save(folder_path+"/"+slots[idx][1]+"/cloud_mask.png")
