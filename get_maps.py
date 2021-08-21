@@ -67,17 +67,17 @@ evalscript_l2a = """
     function setup() {
         return {
             input: [{
-                bands: ["B02", "B03", "B04", "SCL"],
+                bands: ["B01", "B02", "B03", "B04", "SCL"],
             }],
             output: {
-                bands: 4,
+                bands: 5,
                 sampleType: "FLOAT32",
             },
         };
     }
 
     function evaluatePixel(sample) {
-        return [sample.B02, sample.B03, sample.B04, sample.SCL];
+        return [sample.B01, sample.B02, sample.B03, sample.B04, sample.SCL];
     }
 """
 
@@ -243,7 +243,7 @@ for s in sites:
     # print(pixel_count.shape)  # should be like (3, 13259,1399, 5)]
 
     # Download if rgb raw maps exist, load if not.
-    l2a_raw_maps_file_names = ["l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
+    l2a_raw_maps_file_names = ["l2a_b01.png", "l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
     l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)
 
     #rgb_raw_maps_file_name = "rgb_raw_maps.npy"
@@ -381,7 +381,7 @@ for s in sites:
             print('Cloud mask contains only 0')
         else:
             print('Cloud mask has non-zero items')
-        plot_image(image=l1c_map[:,:, [3,2,1]], mask=cloud_mask)
+        #plot_image(image=l1c_map[:,:, [3,2,1]], mask=cloud_mask)
 
         print("max infr: ", np.amax(l1c_map[:, :, 7]))
         print("min infr: ", np.amin(l1c_map[:, :, 7]))

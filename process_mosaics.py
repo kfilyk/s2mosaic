@@ -7,12 +7,17 @@ import matplotlib.pyplot as plt
 import cv2  # pip install opencv-contrib-python
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
-import matplotlib.image as mpimg
-import matplotlib as mpl
-import pickle
+from ordered_set import OrderedSet
 
 N_OPTICS_BANDS = 4
 
+
+def range_0_256(band):
+    min = np.amin(band)
+    band = band - min
+    max = np.amax(band)
+    band = band*255/max
+    return band
 
 files = []
 filelist = []
@@ -27,102 +32,80 @@ print(filelist)
 '''
 filepath = './tiles/accra_-0.2_5.4_0.2_5.6/2021-08-12/'
 filelist.append('./maps/accra/l1c_rgb.png')
-filename = 'accra'
 
 # ------------------------- Add CLP Map For Cloud Detection 
 
-r = Image.open(filepath+'l2a_b02.png')
-g = Image.open(filepath+'l2a_b03.png')
-b = Image.open(filepath+'l2a_b04.png')
+b04 = np.asarray(Image.open(filepath+'l2a_b04.png'), dtype = np.float32)
+b03 = np.asarray(Image.open(filepath+'l2a_b03.png'), dtype = np.float32)
+b02 = np.asarray(Image.open(filepath+'l2a_b02.png'), dtype = np.float32)
+b01 = np.asarray(Image.open(filepath+'l2a_b01.png'), dtype = np.float32)
+b08 = np.asarray(Image.open(filepath+'l1c_b08.png'), dtype = np.float32)
+b09 = np.asarray(Image.open(filepath+'l1c_b09.png'), dtype = np.float32)
+clp = np.asarray(Image.open(filepath+'cloud_prob.png'), dtype = np.float32)
 
-img = np.asarray(r)
-img_g = np.asarray(g)
-img_b = np.asarray(b)
-img = img[:, :, np.newaxis]
-img= np.insert(img, img.shape[2], img_g, axis = 2) # insert b09 band to alpha layer
-img= np.insert(img, img.shape[2], img_b, axis = 2) # insert b09 band to alpha layer
+# ------------------------- Get Colour Image
 
-print("IMG SHAPE: ", img.shape)
+rgb_img = b04[:, :, np.newaxis]
+rgb_img = np.insert(rgb_img, rgb_img.shape[2], b03, axis = 2) 
+rgb_img = np.insert(rgb_img, rgb_img.shape[2], b02, axis = 2) 
+rgb_img = rgb_img.astype(np.uint8)
+im = Image.fromarray(rgb_img[:, :, [0,1,2]])
+im.save(filepath+"rgb.png")
 
-im = Image.fromarray(img[:, :, [2,1,0]])
-im.save(filepath+filename+"_rgb.png")
+# ------------------------- Create Composite(s)
 
-# ------------------------- Add CLP Map For Cloud Detection 
-
-b_image = Image.open(filepath+'cloud_prob.png')
-b = np.asarray(b_image, dtype = np.float32)
-img= np.insert(img, img.shape[2], b, axis = 2) # insert b09 band to alpha layer
-print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
+#composite = range_0_256(b01 * b09)
+composite = range_0_256(b02*b02)
 
 
-# ------------------------- Add B09 Band For Cloud Detection 
-
-b_image = Image.open(filepath+'l1c_b09.png')
-b = np.asarray(b_image, dtype = np.float32)
-img= np.insert(img, img.shape[2], b, axis = 2) # insert b09 band to alpha layer
-print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
-
+#composite = b09
 '''
-# ------------------------- Add B01 Band For Cloud Detection 
+composite =range_0_256(b01 * b02) # get very white layer
+composite =range_0_256(composite - b09) # subtract cloud layer
+composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
 
-b_image = Image.open('./maps/accra/b01.png')
-b = np.asarray(b_image, dtype = np.float32)
-img= np.insert(img, img.shape[2], b, axis = 2) # insert b09 band to alpha layer
-print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
+composite =range_0_256(composite - b09) # subtract cloud layer
+composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
+
+composite =range_0_256(b02 - composite) #
+composite =range_0_256(composite * b09)
 '''
 
-# ------------------------- Save Shape
+composite = composite.astype(np.uint8)
+im = Image.fromarray(composite)
+im.save(filepath+"composite.png")
+
+composite = composite.astype(np.float32)
+
+img = composite[:, :, np.newaxis]
+#img= np.insert(img, img.shape[2], composite, axis = 2) # insert composite
+#img= np.insert(img, img.shape[2], img_r, axis = 2)  # ignore red
+
+
+
+# ------------------------- Add Bands 
+
+img = np.insert(img, img.shape[2], b09, axis = 2) 
+#img = np.insert(img, img.shape[2], b01, axis = 2) 
+img = np.insert(img, img.shape[2], clp, axis = 2) 
+print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
 
 og_shape = img.shape
 
-# ------------------------- Add B01 Band For Cloud Detection 
-
-'''
-aerosol = Image.open('./maps/accra/accra_aerosol.png')
-a_data = np.asarray(aerosol, dtype = np.float32)
-print("AERO SHAPE: ", a_data.shape)
-"""
-min = np.amin(a_data) 
-a_data = a_data - min
-max = np.amax(a_data)
-a_data = a_data * 255/max
-"""
-a_data = a_data.astype(np.uint8)
-
-im = Image.fromarray(a_data)
-im.save('./maps/'+filename+"_aero.png")        
-a_data = a_data.astype(np.float64)
-'''
-
 # ------------------------- Increase image range to 0, 255
 
-img = img.astype(np.float64)
 for band in range(0, img.shape[2]):
-    min = np.amin(img[:,:, band])
-    img[:,:, band] = img[:,:, band] - min
-    max = np.amax(img[:,:, band])
-    img[:,:, band] *= 255.0/max
-img = img.astype(np.uint8)
+    img[:,:, band] = range_0_256(img[:,:, band])
 
 # ------------------------- Blur Images
 
 img = cv2.GaussianBlur(img, (15, 15), 0)
-im = Image.fromarray(img[:, :, [2,1,0]])
-im.save(filepath+filename+"_blurred.png")
-
-# ------------------------- Increase image range to 0, 255
-img = img.astype(np.float32)
 for band in range(0, img.shape[2]):
-    min = np.amin(img[:,:, band])
-    img[:,:, band] = img[:,:, band] - min
-    max = np.amax(img[:,:, band])
-    img[:,:, band] *= 255.0/max
-    min = np.amin(img[:,:, band])
-    max = np.amax(img[:,:, band])
-    print(min)
-    print(max)
-img = img.astype(np.uint8)
+    img[:,:, band] = range_0_256(img[:,:, band])
 
+im = img.astype(np.uint8)
+im = Image.fromarray(im[:, :, [2,1,0]])
+im.save(filepath+"blurred.png")
 
 # ------------------------- Denoise 
 
@@ -139,27 +122,17 @@ if img.shape[2]>=6:
     img2= np.insert(img2, 5, alpha, axis = 2) # insert b09 band to alpha layer
 
 img = img2
-print("IMAGE SHAPE: ", img.shape)
+img = img.astype(np.float32)
 
-im = Image.fromarray(img[:, :, [2,1,0]])
-im.save(filepath+filename+"_denoised.png")
-
-# ------------------------- Increase image range to 0, 255
-
-img = img.astype(np.float64)
 for band in range(0, img.shape[2]):
-    min = np.amin(img[:,:, band])
-    img[:,:, band] = img[:,:, band] - min
-    max = np.amax(img[:,:, band])
-    img[:,:, band] *= 255.0/max
-img = img.astype(np.uint8)
+    img[:,:, band] = range_0_256(img[:,:, band])
 
-im = Image.fromarray(img[:, :, [2,1,0]])
-im.save(filepath+filename+"_denoised.png")
+im = img.astype(np.uint8)
+im = Image.fromarray(im[:, :, [2,1,0]])
+im.save(filepath+"denoised.png")
 
 # ------------------------- Clustering through K-Means
 
-img = img.astype(np.float32)
 # re-shape to get 1D array for each layer (a*b, number of bands)
 img = img.reshape((-1, img.shape[2]))
 
@@ -170,13 +143,34 @@ ret, label, center = cv2.kmeans(
     img, K, None, None, attempts, cv2.KMEANS_PP_CENTERS)
 
 center = np.uint8(center)
-print(center)
+
 res = center[label.flatten()]
 # print("RES: ", res.shape)
 # print(images.reshape((images.shape[1], images.shape[2], 3)).shape)
 img = res.reshape(og_shape)
-im = Image.fromarray(img[:, :, [2, 1, 0]]) # img[:, :, [4, 3, 0]]
-im.save(filepath+filename+"_clustered.png")
+img = img.astype(np.float32)
+# ------------------------- Increase image range to 0, 255
+for band in range(0, img.shape[2]):
+    img[:,:, band] = range_0_256(img[:,:, band])
+
+# ------------------------- Save cluster
+
+grey = img[:, :, 0]
+grey = grey.astype(np.float32)
+shades = OrderedSet([])
+
+for band in range(1, img.shape[2]):
+    grey += img[:, :, band]
+grey = range_0_256(grey/img.shape[2])
+
+grey = grey.astype(np.uint8)
+for i in range(0, grey.shape[0]):
+    for j in range(0, grey.shape[1]):
+        shades.add(grey[i,j])
+
+print(shades)
+im = Image.fromarray(grey)
+im.save(filepath+"clustered.png")
 
 # ------------------------- Edge detecting with Canny
 # using float here since np.nan requires floating points
