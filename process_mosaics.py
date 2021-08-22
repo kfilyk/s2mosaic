@@ -93,13 +93,12 @@ for date_dir_name in os.listdir(tile_path):
         # ------------------------- Blur Images
 
         img = cv2.GaussianBlur(img, (15, 15), 0)
-        im = Image.fromarray(img[:, :, [2,1,0]])
-        im.save(date_dir_path+"_blurred.png")
-
-        # ------------------------- Increase image range to 0, 255
-
         for band in range(0, img.shape[2]):
             img[:,:, band] = range_0_256(img[:,:, band])
+
+        im = img.astype(np.uint8)
+        im = Image.fromarray(im[:, :, [2,1,0]])
+        im.save(date_dir_path+"blurred.png")
 
         # ------------------------- Denoise 
 
@@ -166,7 +165,7 @@ for date_dir_name in os.listdir(tile_path):
         print(shades)
         im = Image.fromarray(grey)
         im.save(date_dir_path+"clustered.png")
-        
+
         # ------------------------- Mosaicing
 
 
