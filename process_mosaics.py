@@ -25,6 +25,7 @@ for date_dir_name in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir_name)): # ensure is a directory
 
         date_dir_path = tile_path+"/"+date_dir_name+"/" 
+        print(date_dir_path)
 
         # ------------------------- Add Bands Map For Cloud Detection 
 
@@ -77,7 +78,7 @@ for date_dir_name in os.listdir(tile_path):
         # ------------------------- Add Bands 
 
         img = np.insert(img, img.shape[2], b09, axis = 2) 
-        #img = np.insert(img, img.shape[2], b01, axis = 2) 
+        img = np.insert(img, img.shape[2], b01, axis = 2) 
         img = np.insert(img, img.shape[2], clp, axis = 2) 
         print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
 
