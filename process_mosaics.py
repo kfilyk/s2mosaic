@@ -166,73 +166,83 @@ for date_dir_name in os.listdir(tile_path):
         im = Image.fromarray(grey)
         im.save(date_dir_path+"clustered.png")
 
-        # ------------------------- Mosaicing
+        
+# ------------------------- Mosaicing
+
+# TODO: also swap based on cloud probability, whoever has lowest cloud prob
+
+# Load in cloud mask from each day
+rgb_imgs = {}
+cloud_masks_path = {}
+cloud_masks_path_cloud_count = {}
+
+# Load in cloud mask files and get cloud cover count for each image
+for date_dir in os.listdir(tile_path):
+    if os.path.isdir(os.path.join(tile_path, date_dir)): # ensure is a directory
+        for file_name in os.listdir(tile_path+date_dir+"/"):
+            if file_name == "cloud_mask.png":
+                print(tile_path+date_dir+"/cloud_mask.png")
+                cloud_masks_path[tile_path+date_dir] = np.asarray(Image.open(tile_path+date_dir+"/cloud_mask.png"))
+                cloud_masks_path_cloud_count[tile_path+date_dir] =  (cloud_masks_path[tile_path+date_dir] == 255).sum() # Count number of pixels that is a cloud
+            elif file_name == "rgb.png":
+                print(tile_path+date_dir+"/rgb.png")
+                rgb_imgs[tile_path+date_dir] = np.asarray(Image.open(tile_path+date_dir+"/rgb.png"))
 
 
-        # Load in cloud mask from each day
-        # rgb_imgs = {}
-        # cloud_masks = {}
-        # cloud_masks_cloud_count = {}
+# Choose least cloudy image as base image
+least_cloudy_img_path = min(cloud_masks_path_cloud_count, key=cloud_masks_path_cloud_count.get)
+print("Least cloud image is: ", least_cloudy_img_path)
 
-        # # Load in cloud mask files and get cloud cover count for each image
-        # for cloud_mask_file in os.listdir(tile_path+date_dir_name+"/"):
-        #     if cloud_mask_file == "cloud_mask.png":
-        #         # print(dsirectory_path+"/"+date_dir_name+"/cloud_mask.png")
-        #         rgb_imgs[date_dir_name] = np.asarray(Image.open(tile_path+date_dir_name+"/"+"_rgb.png"))
 
-        #         Image.open(tile_path+date_dir_name+"/"+"_rgb.png").show()
-
-        #         cloud_masks[date_dir_name] = np.asarray(Image.open(tile_path+date_dir_name+"/cloud_mask.png"))
-        #         cloud_masks_cloud_count[date_dir_name] = np.sum(np.asarray(Image.open(tile_path+date_dir_name+"/cloud_mask.png")) % 2 == 1) # Sum up 1's
-
-        # # Choose least cloudy image as base image
-        # least_cloudy_img_dir = min(cloud_masks_cloud_count, key=cloud_masks_cloud_count.get)
-        # print(least_cloudy_img_dir)
+# Loop through base image and start the mosaicing process!
+for i in range(0, cloud_masks_path[least_cloudy_img_path].shape[0]):
+    for j in range(0, cloud_masks_path[least_cloudy_img_path].shape[1]):
+        # Check if there is a cloud at this pixel
+        if cloud_masks_path[least_cloudy_img_path][i,j] == 255:
+            # print("There's a cloud here!")
+            # See if other tiles has no cloud at same spot
+            for date_dir_path in cloud_masks_path:
+                if date_dir_path != least_cloudy_img_path and cloud_masks_path[date_dir_path][i,j] != 255:
+                    # Replace base image's pixel with none cloud pixel
+                    rgb_imgs[least_cloudy_img_path][i,j] = rgb_imgs[date_dir_path][i,j]
+                    break
 
 
 
-        # Loop through base image and start the mosaicing process!
-        # for i in range(0, cloud_masks[least_cloudy_img_dir].shape[0]):
-        #     for j in range(0, cloud_mask[least_cloudy_img_dir].shape[1]):
+Image.fromarray(rgb_imgs[least_cloudy_img_path]).show()
 
 
 
 
+# ------------------------- Edge detecting with Canny
+# using float here since np.nan requires floating points
+'''
+edge = cv2.Canny(img, 2, 5).astype("float")
+print("EDGE SHAPE: ", edge.shape)
+print("EDGE: ", edge)
+# Not entirely sure why he wanted to replace 0s with "Not a Number" values
+# edge[edge == 0] = np.nan #np.nan only exists with floating-point data types
+edge = np.uint8(edge)  # converting back to 8 bit for viewing (0-255)
+# print("EDGE np.nan: ", edge)
+# print("List all indices that have nan value: ", np.argwhere(np.isnan(edge)))
+image = Image.open(f)
+bckgndImg = np.asarray(image, dtype=np.uint8)
+if bckgndImg.ndim == 2:
+    bckgndImg = np.stack((bckgndImg,)*3, axis=-1)
+elif bckgndImg.shape[2] == 4:
+    bckgndImg = bckgndImg[:,:,0:3] # get rid of alpha layer
 
-
-
-
-
-
-        # ------------------------- Edge detecting with Canny
-        # using float here since np.nan requires floating points
-        '''
-        edge = cv2.Canny(img, 2, 5).astype("float")
-        print("EDGE SHAPE: ", edge.shape)
-        print("EDGE: ", edge)
-        # Not entirely sure why he wanted to replace 0s with "Not a Number" values
-        # edge[edge == 0] = np.nan #np.nan only exists with floating-point data types
-        edge = np.uint8(edge)  # converting back to 8 bit for viewing (0-255)
-        # print("EDGE np.nan: ", edge)
-        # print("List all indices that have nan value: ", np.argwhere(np.isnan(edge)))
-        image = Image.open(f)
-        bckgndImg = np.asarray(image, dtype=np.uint8)
-        if bckgndImg.ndim == 2:
-            bckgndImg = np.stack((bckgndImg,)*3, axis=-1)
-        elif bckgndImg.shape[2] == 4:
-            bckgndImg = bckgndImg[:,:,0:3] # get rid of alpha layer
-
-        # Make edge into 3 channel, bgr or rgb image
-        # RGB for matplotlib, BGR for imshow()
-        rgb = cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB)
-        # Dilate the lines so we can see them clearer on the overlay
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        thicBoiEdgeRGB = cv2.dilate(rgb, kernel, iterations=1)
-        # Now all edges are white (255,255,255). to make it red, multiply with another array:
-        thicBoiEdgeRGB *= np.array((1, 0, 0), np.uint8)  # Leave R = 1, G, B = 0
-        # Overlay
-        overlayedImg = np.bitwise_or(bckgndImg, thicBoiEdgeRGB)
-        im = Image.fromarray(overlayedImg)
-        im.save("./maps/"+"_edge_overlay.png")
-        '''
+# Make edge into 3 channel, bgr or rgb image
+# RGB for matplotlib, BGR for imshow()
+rgb = cv2.cvtColor(edge, cv2.COLOR_GRAY2RGB)
+# Dilate the lines so we can see them clearer on the overlay
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+thicBoiEdgeRGB = cv2.dilate(rgb, kernel, iterations=1)
+# Now all edges are white (255,255,255). to make it red, multiply with another array:
+thicBoiEdgeRGB *= np.array((1, 0, 0), np.uint8)  # Leave R = 1, G, B = 0
+# Overlay
+overlayedImg = np.bitwise_or(bckgndImg, thicBoiEdgeRGB)
+im = Image.fromarray(overlayedImg)
+im.save("./maps/"+"_edge_overlay.png")
+'''
 
