@@ -67,17 +67,17 @@ evalscript_l2a = """
     function setup() {
         return {
             input: [{
-                bands: ["B01", "B02", "B03", "B04", "SCL"],
+                bands: ["B01", "B02", "B03", "B04", "B08", "B8A", "B09", "B11", "B12", "CLP", "SCL"],
             }],
             output: {
-                bands: 5,
+                bands: 11,
                 sampleType: "FLOAT32",
             },
         };
     }
 
     function evaluatePixel(sample) {
-        return [sample.B01, sample.B02, sample.B03, sample.B04, sample.SCL];
+        return [sample.B01, sample.B02, sample.B03, sample.B04, sample.B08, sample.B8A, sample.B09, sample.B11, sample.B12, sample.CLP, sample.SCL];
     }
 """
 
@@ -216,7 +216,7 @@ for s in sites:
     # get one month of data
     today = datetime.today()
     interval_length = 7 # 7 days
-    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-6)
+    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-8) # get two months of data
     last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
     slots = [] # all weeks of data to be queried
     while today > earliest_date:
@@ -232,31 +232,16 @@ for s in sites:
     l1c_list_of_requests = [get_l1c_request(slot) for slot in slots]
     l1c_list_of_requests = [request.download_list[0] for request in l1c_list_of_requests] 
 
-<<<<<<< HEAD
-    # raw_maps = np.array(map_requests.get_data(), dtype=np.float64) # get array of all maps - note that SCL cloud cover map
-    # print("raw_maps shape: ", raw_maps.shape)  # should be like (3, 13259,1399, 5)
-    # print("raw_maps data type: ", raw_maps.dtype)
-    # maps = np.copy(raw_maps)
-    # average_map = np.zeros_like(maps[0, :, :, :4]) # create a single map instance of size (w, h, 4) instead of 5
-    # pixel_count = np.zeros_like(maps[0, :, :]) # counts how many different sub map values have been accumulated for a given pixel location
-    # print(average_map.shape)  # should be like (3, 13259,1399, 5)
-    # print(pixel_count.shape)  # should be like (3, 13259,1399, 5)]
-
-    # Download if rgb raw maps exist, load if not.
-    l2a_raw_maps_file_names = ["l2a_b01.png", "l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
-    l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)
-=======
-    l2a_raw_maps_file_names = ["l2a_b02.png","l2a_b03.png","l2a_b04.png","l2a_scl.png"]
+    l2a_raw_maps_file_names = ["l2a_b01.png", "l2a_b02.png","l2a_b03.png","l2a_b04.png", "l2a_b08.png", "l2a_b8a.png", "l2a_b09.png", "l2a_b11.png", "l2a_b12.png", "l2a_clp.png", "l2a_scl.png"]
     l2a_raw_maps = []
     if not os.path.exists(folder_path+"/l2a_raw_maps.npy"):
         print(DEBUG_TILE_QUERY+" Beginning l2a_raw_maps download for ", s, sites[s])
-        l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)print
+        l2a_raw_maps = np.array(SentinelHubDownloadClient(config=config).download(l2a_list_of_requests, max_threads=5), dtype= np.float32)
         np.save(folder_path+"/l2a_raw_maps", l2a_raw_maps)
         print(DEBUG_TILE_QUERY+" Finished l2a_raw_maps download for ", s, sites[s])
     else:
         print(DEBUG_TILE_QUERY+" l2a_raw_maps loaded for ", s, sites[s])
         np.load(folder_path+"/l2a_raw_maps.npy")
->>>>>>> e4d802eb6f7c4a5851c00222bb54c646c88a6bc3
 
     # Create directory for the different days with picture of each band
     for idx, map in enumerate(l2a_raw_maps):
@@ -264,7 +249,11 @@ for s in sites:
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                b = get_scaled_band(band, map)
+                b = map[:, :, band]
+                if f != "l2a_scl.png":
+                    b = get_scaled_band(band, map)
+                else:
+                    b *= 255/11
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
                 im.save(folder_path+"/"+slots[idx][1]+"/"+f)

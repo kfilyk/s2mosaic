@@ -24,9 +24,8 @@ tile_path = "./tiles/accra_-0.2_5.4_0.2_5.6/"
 for date_dir_name in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir_name)): # ensure is a directory
 
-        date_dir_path = tile_path+"/"+date_dir_name+"/" 
+        date_dir_path = tile_path+date_dir_name+"/" 
         print(date_dir_path)
-
         # ------------------------- Add Bands Map For Cloud Detection 
 
         b04 = np.asarray(Image.open(date_dir_path+'l2a_b04.png'), dtype = np.float32)
@@ -36,34 +35,33 @@ for date_dir_name in os.listdir(tile_path):
         b08 = np.asarray(Image.open(date_dir_path+'l1c_b08.png'), dtype = np.float32)
         b09 = np.asarray(Image.open(date_dir_path+'l1c_b09.png'), dtype = np.float32)
         clp = np.asarray(Image.open(date_dir_path+'cloud_prob.png'), dtype = np.float32)
-
+        scl = np.asarray(Image.open(date_dir_path+'l2a_scl.png'), dtype = np.float32)
+        '''
         # ------------------------- Get Colour Image
-
+        '''
         rgb_img = b04[:, :, np.newaxis]
         rgb_img = np.insert(rgb_img, rgb_img.shape[2], b03, axis = 2) 
         rgb_img = np.insert(rgb_img, rgb_img.shape[2], b02, axis = 2) 
         rgb_img = rgb_img.astype(np.uint8)
         im = Image.fromarray(rgb_img[:, :, [0,1,2]])
         im.save(date_dir_path+"rgb.png")
-
+        '''
         # ------------------------- Create Composite(s)
-
+        '''
         #composite = range_0_256(b01 * b09)
         composite = range_0_256(b02*b02)
 
 
         #composite = b09
-        '''
-        composite =range_0_256(b01 * b02) # get very white layer
-        composite =range_0_256(composite - b09) # subtract cloud layer
-        composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
+        #composite =range_0_256(b01 * b02) # get very white layer
+        #composite =range_0_256(composite - b09) # subtract cloud layer
+        #composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
 
-        composite =range_0_256(composite - b09) # subtract cloud layer
-        composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
+        #composite =range_0_256(composite - b09) # subtract cloud layer
+        #composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
 
-        composite =range_0_256(b02 - composite) #
-        composite =range_0_256(composite * b09)
-        '''
+        #composite =range_0_256(b02 - composite) #
+        #composite =range_0_256(composite * b09)
 
         composite = composite.astype(np.uint8)
         im = Image.fromarray(composite)
@@ -167,50 +165,108 @@ for date_dir_name in os.listdir(tile_path):
         im = Image.fromarray(grey)
         im.save(date_dir_path+"clustered.png")
 
-        
 # ------------------------- Mosaicing
 
 # TODO: also swap based on cloud probability, whoever has lowest cloud prob
 
 # Load in cloud mask from each day
+scl_imgs = {}
 rgb_imgs = {}
-cloud_masks_path = {}
-cloud_masks_path_cloud_count = {}
-
+cluster_imgs = {}
+clp_counts = {}
+cloud_masks = {}
 # Load in cloud mask files and get cloud cover count for each image
 for date_dir in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir)): # ensure is a directory
         for file_name in os.listdir(tile_path+date_dir+"/"):
-            if file_name == "cloud_mask.png":
-                print(tile_path+date_dir+"/cloud_mask.png")
-                cloud_masks_path[tile_path+date_dir] = np.asarray(Image.open(tile_path+date_dir+"/cloud_mask.png"))
-                cloud_masks_path_cloud_count[tile_path+date_dir] =  (cloud_masks_path[tile_path+date_dir] == 255).sum() # Count number of pixels that is a cloud
+            if file_name == "clustered.png":
+                #print(tile_path+date_dir+"/l1c_b09.png")
+                cluster_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/clustered.png")) # sub this in for cluster map later
+            elif file_name == "cloud_prob.png":
+                clp = np.array(Image.open(tile_path+date_dir+"/cloud_prob.png"))
+                clp_counts[tile_path+date_dir] = clp.sum() # Count number of pixels that is (probably) a cloud
             elif file_name == "rgb.png":
-                print(tile_path+date_dir+"/rgb.png")
-                rgb_imgs[tile_path+date_dir] = np.asarray(Image.open(tile_path+date_dir+"/rgb.png"))
+                #print(tile_path+date_dir+"/rgb.png")
+                rgb_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/rgb.png"))
+            elif file_name == "l2a_scl.png":
+                #print(tile_path+date_dir+"/l2a_scl.png")
+                scl_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/l2a_scl.png"))
 
+
+# --------------------------------------------- Get composite SCL
+first_key = list(scl_imgs.keys())[0]
+composite_scl = scl_imgs[first_key]
+
+for scl in scl_imgs: 
+    print(scl)
+    if scl == first_key:
+        continue
+    else:                 
+        s = scl_imgs[scl] # get scl image 
+        for row in range(0, composite_scl.shape[0]):
+            for col in range(0, composite_scl.shape[1]):
+                if s[row, col] == 139:
+                    composite_scl[row, col] = 139 # water
+                if s[row, col] == 115:
+                    composite_scl[row, col] = 115  # land
+                if s[row, col] == 92:
+                    composite_scl[row, col] = 115  # land
+
+for row in range(0, composite_scl.shape[0]):
+    for col in range(0, composite_scl.shape[1]):
+        if composite_scl[row, col] == 115 or composite_scl[row, col] == 92: # land or vegetation
+            composite_scl[row, col] = 255 # paint land white       
+        else:
+            composite_scl[row, col] = 0 # paint water/unknown black
+
+Image.fromarray(composite_scl).show() # show composite scl image, which has pixels categorized mainly as water/land
+# at this point we have an scl image from all other images (mostly) defining water and land
+
+# --------------------------------------------- Create true cloud masks from cluster maps
+
+cloud_masks = {}
+
+for cl in cluster_imgs:
+    c = cluster_imgs[cl] # get a cluster image
+    # return a cloud mask (over water)
+    for row in range(0, c.shape[0]):
+        for col in range(0, c.shape[1]):
+
+            # consider over water
+            if composite_scl[row, col] == 255 and c[row, col] > 128:
+                c[row, col] = 255
+            elif composite_scl[row, col] == 0 and c[row, col] > 12:
+                c[row, col] = 255 
+            else:
+                c[row, col] = 0
+
+    cloud_masks[cl] = c # save cloud mask
+    Image.fromarray(c).show() # show composite scl image, which has pixels categorized mainly as water/land
+
+# ---------------------------------------------  Create true final RGB image
 
 # Choose least cloudy image as base image
-least_cloudy_img_path = min(cloud_masks_path_cloud_count, key=cloud_masks_path_cloud_count.get)
+least_cloudy_img_path = min(clp_counts, key=clp_counts.get)
 print("Least cloud image is: ", least_cloudy_img_path)
 
+composite_rgb = rgb_imgs[least_cloudy_img_path] # base image
 
 # Loop through base image and start the mosaicing process!
-for i in range(0, cloud_masks_path[least_cloudy_img_path].shape[0]):
-    for j in range(0, cloud_masks_path[least_cloudy_img_path].shape[1]):
+for i in range(0, cloud_masks[least_cloudy_img_path].shape[0]):
+    for j in range(0, cloud_masks[least_cloudy_img_path].shape[1]):
         # Check if there is a cloud at this pixel
-        if cloud_masks_path[least_cloudy_img_path][i,j] == 255:
+        if cloud_masks[least_cloudy_img_path][i,j] == 255:
             # print("There's a cloud here!")
             # See if other tiles has no cloud at same spot
-            for date_dir_path in cloud_masks_path:
-                if date_dir_path != least_cloudy_img_path and cloud_masks_path[date_dir_path][i,j] != 255:
+            for date_dir_path in cloud_masks:
+                if date_dir_path != least_cloudy_img_path and cloud_masks[date_dir_path][i,j] != 255:
                     # Replace base image's pixel with none cloud pixel
-                    rgb_imgs[least_cloudy_img_path][i,j] = rgb_imgs[date_dir_path][i,j]
+                    composite_rgb[i,j] = rgb_imgs[date_dir_path][i,j]
                     break
 
 
 
-Image.fromarray(rgb_imgs[least_cloudy_img_path]).show()
+Image.fromarray(composite_rgb).show()
 
 
 
