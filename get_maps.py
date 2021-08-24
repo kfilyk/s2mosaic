@@ -204,7 +204,7 @@ for s in sites:
     # get one month of data
     today = datetime.today()
     interval_length = 7 # 7 days
-    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-1) # get two months of data
+    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-8) # get two months of data
     last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
     slots = [] # all weeks of data to be queried
     while today > earliest_date:
@@ -237,8 +237,8 @@ for s in sites:
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                print(np.amin(map[:, :, band]))
-                print(np.amax(map[:, :, band]))
+                #print(np.amin(map[:, :, band])) # reflectance range between 0 - 500
+                #print(np.amax(map[:, :, band]))
                 b = np.clip(map[:, :, band], 0, 255)
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
@@ -261,8 +261,8 @@ for s in sites:
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                print("MIN: ", np.amin(map[:, :, band]))
-                print("MAX: ", np.amax(map[:, :, band]))
+                #print("MIN: ", np.amin(map[:, :, band])) # reflectance range between 0 - 255 
+                #print("MAX: ", np.amax(map[:, :, band]))
                 b = np.clip(map[:, :, band], 0, 255)
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
@@ -292,7 +292,7 @@ for s in sites:
         # ------------------ Cloud Detection Begins
 
         # none rgb images
-        bands = l1c_map[..., :-1]
+        bands = l1c_map[..., :-1] / 255 # l1c guaranteed to be between 0 - 255.. get range to 0-1
         mask = l1c_map[..., -1] # get rid of data_mask
 
         # print("bands: ", bands)
