@@ -241,7 +241,7 @@ for s in sites:
         print(DEBUG_TILE_QUERY+" Finished l2a_raw_maps download for ", s, sites[s])
     else:
         print(DEBUG_TILE_QUERY+" l2a_raw_maps loaded for ", s, sites[s])
-        np.load(folder_path+"/l2a_raw_maps.npy")
+        l2a_raw_maps = np.load(folder_path+"/l2a_raw_maps.npy")
 
     # Create directory for the different days with picture of each band
     for idx, map in enumerate(l2a_raw_maps):
@@ -267,7 +267,7 @@ for s in sites:
         print(DEBUG_TILE_QUERY+" Finished l1c_raw_maps download for ", s, sites[s])
     else:
         print(DEBUG_TILE_QUERY+" l1c_raw_maps loaded for ", s, sites[s])
-        np.load(folder_path+"/l1c_raw_maps.npy")
+        l1c_raw_maps = np.load(folder_path+"/l1c_raw_maps.npy")
 
     
     for idx, map in enumerate(l1c_raw_maps):

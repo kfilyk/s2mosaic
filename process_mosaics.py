@@ -8,8 +8,60 @@ import cv2  # pip install opencv-contrib-python
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from ordered_set import OrderedSet
+from skimage.io import imread, imsave
+from skimage import exposure
+from skimage.exposure import match_histograms
 
 N_OPTICS_BANDS = 4
+
+def generate_histogram(img_name, img, do_print):
+    """
+    @params: img: can be a grayscale or color image. We calculate the Normalized histogram of this image.
+    @params: do_print: if or not print the result histogram
+    @return: will return both histogram and the grayscale image 
+    """
+    if len(img.shape) == 3: # img is colorful, so we convert it to grayscale
+        gr_img = np.mean(img, axis=-1)
+    else:
+        gr_img = img
+    '''now we calc grayscale histogram'''
+    gr_hist = np.zeros([256])
+
+    for x_pixel in range(gr_img.shape[0]):
+        for y_pixel in range(gr_img.shape[1]):
+            pixel_value = int(gr_img[x_pixel, y_pixel])
+            gr_hist[pixel_value] += 1
+            
+    '''normalizing the Histogram'''
+    gr_hist /= (gr_img.shape[0] * gr_img.shape[1])
+    if do_print:
+        print_histogram(gr_hist, name=img_name+"n_h_img", title="Normalized Histogram")
+    return gr_hist, gr_img
+  
+def print_histogram(_histrogram, name, title):
+    plt.figure()
+    plt.title(title)
+    plt.plot(_histrogram, color='#ef476f')
+    plt.bar(np.arange(len(_histrogram)), _histrogram, color='#b7b7a4')
+    plt.ylabel('Number of Pixels')
+    plt.xlabel('Pixel Value')
+    plt.savefig("hist_" + name)
+
+def equalize_histogram(img, histo, L):
+    eq_histo = np.zeros_like(histo)
+    en_img = np.zeros_like(img)
+    for i in range(len(histo)):
+        eq_histo[i] = int((L - 1) * np.sum(histo[0:i]))
+    print_histogram(eq_histo, name="eq_"+str(index), title="Equalized Histogram")
+    '''enhance image as well:'''
+    for x_pixel in range(img.shape[0]):
+        for y_pixel in range(img.shape[1]):
+            pixel_val = int(img[x_pixel, y_pixel])
+            en_img[x_pixel, y_pixel] = eq_histo[pixel_val]
+    '''creating new histogram'''
+    hist_img, _ = generate_histogram(en_img, print=False, index=index)
+    print_img(img=en_img, histo_new=hist_img, histo_old=histo, index=str(index), L=L)
+    return eq_histo
 
 
 def range_0_256(band):
@@ -174,7 +226,6 @@ scl_imgs = {}
 rgb_imgs = {}
 cluster_imgs = {}
 clp_counts = {}
-cloud_masks = {}
 # Load in cloud mask files and get cloud cover count for each image
 for date_dir in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir)): # ensure is a directory
@@ -197,12 +248,13 @@ for date_dir in os.listdir(tile_path):
 first_key = list(scl_imgs.keys())[0]
 composite_scl = scl_imgs[first_key]
 
-for scl in scl_imgs: 
+
+for scl in scl_imgs:
     print(scl)
     if scl == first_key:
         continue
     else:                 
-        s = scl_imgs[scl] # get scl image 
+        s = scl_imgs[scl] # get scl image
         for row in range(0, composite_scl.shape[0]):
             for col in range(0, composite_scl.shape[1]):
                 if s[row, col] == 139:
@@ -221,6 +273,8 @@ for row in range(0, composite_scl.shape[0]):
 
 Image.fromarray(composite_scl).show() # show composite scl image, which has pixels categorized mainly as water/land
 # at this point we have an scl image from all other images (mostly) defining water and land
+
+# np.save("composite_scl", composite_scl)
 
 # --------------------------------------------- Create true cloud masks from cluster maps
 
@@ -241,7 +295,7 @@ for cl in cluster_imgs:
                 c[row, col] = 0
 
     cloud_masks[cl] = c # save cloud mask
-    Image.fromarray(c).show() # show composite scl image, which has pixels categorized mainly as water/land
+#     Image.fromarray(c).show() # show composite scl image, which has pixels categorized mainly as water/land
 
 # ---------------------------------------------  Create true final RGB image
 
@@ -251,13 +305,30 @@ print("Least cloud image is: ", least_cloudy_img_path)
 
 composite_rgb = rgb_imgs[least_cloudy_img_path] # base image
 
+# np.save("cloud_masks", cloud_masks)
+# np.save("composite_rgb", composite_rgb)
+# composite_rgb = np.load("composite_rgb.npy")
+# cloud_masks = np.load("cloud_masks.npy", allow_pickle=True)
+
+
+# ---------------------------------------------  Colour match other images to base image
+matched = {}
+idx = 0
+for rgb_img in rgb_imgs:
+    # Match using the right side as reference
+    if rgb_img != least_cloudy_img_path:
+        rgb_imgs[rgb_img] = match_histograms(rgb_imgs[rgb_img], composite_rgb, multichannel=True)
+        imsave(str(idx)+'_result.png', rgb_imgs[rgb_img])
+        idx += 1
+
+
 # Loop through base image and start the mosaicing process!
 for i in range(0, cloud_masks[least_cloudy_img_path].shape[0]):
     for j in range(0, cloud_masks[least_cloudy_img_path].shape[1]):
         # Check if there is a cloud at this pixel
         if cloud_masks[least_cloudy_img_path][i,j] == 255:
             # print("There's a cloud here!")
-            # See if other tiles has no cloud at same spot
+            # See if other tiles have no cloud at same spot
             for date_dir_path in cloud_masks:
                 if date_dir_path != least_cloudy_img_path and cloud_masks[date_dir_path][i,j] != 255:
                     # Replace base image's pixel with none cloud pixel
@@ -267,6 +338,10 @@ for i in range(0, cloud_masks[least_cloudy_img_path].shape[0]):
 
 
 Image.fromarray(composite_rgb).show()
+
+
+
+
 
 
 
