@@ -21,11 +21,10 @@ evalscript_l1c = """
         return {
             input: [{
                 bands: ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "dataMask"],
-                units: "reflectance"
             }],
             output: {
                 bands: 14,
-                sampleType: "FLOAT32",
+                sampleType: "AUTO",
             },
         };
     }
@@ -34,9 +33,7 @@ evalscript_l1c = """
         return [sample.B01, sample.B02, sample.B03, sample.B04, sample.B05, sample.B06, sample.B07, sample.B08, sample.B8A, sample.B09, sample.B10, sample.B11, sample.B12, sample.dataMask];
     }
 """
-# bands: ["B02", "B03", "B04", "B08", "SCL", "CLP", "CLM"],
-# return [sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.SCL, sample.CLP, sample.CLM];
-#mosaicking: "ORBIT"
+# sample type auto: scales output to 0-255. Note that reflectance can be above 1: simple cutoff this edgge case to 255 also.
 
 def get_l1c_request(time_interval):
     return SentinelHubRequest(
@@ -68,16 +65,18 @@ evalscript_l2a = """
                 bands: ["B01", "B02", "B03", "B04", "B08", "B8A", "B09", "B11", "B12", "CLP", "SCL"],
             }],
             output: {
-                bands: 11,
+                bands:11,
                 sampleType: "FLOAT32",
             },
         };
     }
 
     function evaluatePixel(sample) {
-        return [sample.B01, sample.B02, sample.B03, sample.B04, sample.B08, sample.B8A, sample.B09, sample.B11, sample.B12, sample.CLP, sample.SCL];
+        return [sample.B01*255, sample.B02*255, sample.B03*255, sample.B04*255, sample.B08*255, sample.B8A*255, sample.B09*255, sample.B11*255, sample.B12*255, sample.CLP, sample.SCL*255/11]
     }
 """
+# sample type auto: scales output to 0-255 - used to be FLOAT32
+
 
 def get_l2a_request(time_interval):
     return SentinelHubRequest(
@@ -132,15 +131,6 @@ def plot_probabilities(image, proba, factor=3.5/255):
     ax.imshow(np.clip(image * factor, 0, 1))
     ax = plt.subplot(1, 2, 2)
     ax.imshow(proba, cmap=plt.cm.inferno)
-
-# return band scaled between range 0, 255
-def get_scaled_band(idx, map):
-    b = map[:, :, idx]*255
-    min = np.amin(b)
-    b = b - min
-    max = np.amax(b)
-    b = b*255/max
-    return b
 
 # sign in to sentinelhub
 config = SHConfig()
@@ -214,7 +204,7 @@ for s in sites:
     # get one month of data
     today = datetime.today()
     interval_length = 7 # 7 days
-    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-8) # get two months of data
+    earliest_date = today + dateutil.relativedelta.relativedelta(weeks=-1) # get two months of data
     last_week = today + dateutil.relativedelta.relativedelta(days=-interval_length) # one week before today
     slots = [] # all weeks of data to be queried
     while today > earliest_date:
@@ -247,16 +237,14 @@ for s in sites:
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                b = map[:, :, band]
-                if f != "l2a_scl.png":
-                    b = get_scaled_band(band, map)
-                else:
-                    b *= 255/11
+                print(np.amin(map[:, :, band]))
+                print(np.amax(map[:, :, band]))
+                b = np.clip(map[:, :, band], 0, 255)
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
                 im.save(folder_path+"/"+slots[idx][1]+"/"+f)
 
-    l1c_raw_maps_file_names = ["l1c_b01.png","l1c_b02.png","l1c_b03.png","l1c_b04.png","l1c_b05.png","l1c_b06.png","l1c_b07.png","l1c_b08.png","l1c_b8a.png","l1c_b09.png","l1c_b10.png","l1c_b11.png","l1c_b12.png"]
+    l1c_raw_maps_file_names = ["l1c_b01.png","l1c_b02.png","l1c_b03.png","l1c_b04.png","l1c_b05.png","l1c_b06.png","l1c_b07.png","l1c_b08.png","l1c_b8a.png","l1c_b09.png","l1c_b10.png","l1c_b11.png","l1c_b12.png", "l1c_data_mask.png"]
     l1c_raw_maps = []
     if not os.path.exists(folder_path+"/l1c_raw_maps.npy"):
         print(DEBUG_TILE_QUERY+" Beginning l1c_raw_maps download for ", s, sites[s])
@@ -273,7 +261,9 @@ for s in sites:
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                b = get_scaled_band(band, map)
+                print("MIN: ", np.amin(map[:, :, band]))
+                print("MAX: ", np.amax(map[:, :, band]))
+                b = np.clip(map[:, :, band], 0, 255)
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
                 im.save(folder_path+"/"+slots[idx][1]+"/"+f)
@@ -299,16 +289,11 @@ for s in sites:
 
     for idx, l1c_map in enumerate(l1c_raw_maps):
 
-        '''
-        # Brighten image for viewing purposes
-        for band in range(0, l1c_map.shape[2]):
-            l1c_map[:, :, band] = get_scaled_band(band, l1c_map)
-        '''
         # ------------------ Cloud Detection Begins
 
         # none rgb images
         bands = l1c_map[..., :-1]
-        mask = l1c_map[..., -1]
+        mask = l1c_map[..., -1] # get rid of data_mask
 
         # print("bands: ", bands)
         # print("mask: ", mask)
@@ -361,16 +346,9 @@ for s in sites:
             print('Cloud mask has non-zero items')
         #plot_image(image=l1c_map[:,:, [3,2,1]], mask=cloud_mask)
 
-        print("max infr: ", np.amax(l1c_map[:, :, 7]))
-        print("min infr: ", np.amin(l1c_map[:, :, 7]))
+        #print("max infr: ", np.amax(l1c_map[:, :, 7]))
+        #print("min infr: ", np.amin(l1c_map[:, :, 7]))
         
-        # bands: ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "dataMask"],
-
-        '''
-        b = get_scaled_band(1, l1c_map) 
-        img_b = Image.fromarray(b, 'L')
-        img_b.show()
-        '''
 
         # print("cloud probability: ", cloud_prob)
         # print("cloud probability shape: ", cloud_prob.shape)
