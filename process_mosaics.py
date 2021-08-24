@@ -88,18 +88,18 @@ for date_dir_name in os.listdir(tile_path):
         b09 = np.asarray(Image.open(date_dir_path+'l1c_b09.png'), dtype = np.float32)
         clp = np.asarray(Image.open(date_dir_path+'cloud_prob.png'), dtype = np.float32)
         scl = np.asarray(Image.open(date_dir_path+'l2a_scl.png'), dtype = np.float32)
-        '''
+
         # ------------------------- Get Colour Image
-        '''
+
         rgb_img = b04[:, :, np.newaxis]
         rgb_img = np.insert(rgb_img, rgb_img.shape[2], b03, axis = 2) 
         rgb_img = np.insert(rgb_img, rgb_img.shape[2], b02, axis = 2) 
         rgb_img = rgb_img.astype(np.uint8)
         im = Image.fromarray(rgb_img[:, :, [0,1,2]])
         im.save(date_dir_path+"rgb.png")
-        '''
+
         # ------------------------- Create Composite(s)
-        '''
+
         #composite = range_0_256(b01 * b09)
         composite = range_0_256(b02*b02)
 

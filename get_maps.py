@@ -14,8 +14,6 @@ from PIL import Image, ImageEnhance
 from scipy.ndimage.filters import gaussian_filter
 import time
 
-
-
 # b02 red b03 green b04 blue ; CLD = sentinel2 cloud detection
 evalscript_l1c = """
     //VERSION=3
