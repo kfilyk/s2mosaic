@@ -77,7 +77,10 @@ for date_dir_name in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir_name)): # ensure is a directory
 
         date_dir_path = tile_path+date_dir_name+"/" 
+        if date_dir_path != "./tiles/accra_-0.2_5.4_0.2_5.6/2021-08-17/":
+            continue
         print(date_dir_path)
+
         # ------------------------- Add Bands Map For Cloud Detection 
 
         b04 = np.asarray(Image.open(date_dir_path+'l2a_b04.png'), dtype = np.float32)
