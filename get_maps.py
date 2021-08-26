@@ -237,9 +237,9 @@ for s in sites:
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                #print(np.amin(map[:, :, band])) # reflectance range between 0 - 500
+                #print(np.amin(map[:, :, band])) 
                 #print(np.amax(map[:, :, band]))
-                b = np.clip(map[:, :, band], 0, 255)
+                b = np.clip(map[:, :, band], 0, 255) # reflectance range between 0 - 500 - clip to 0-255
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
                 im.save(folder_path+"/"+slots[idx][1]+"/"+f)
@@ -261,9 +261,9 @@ for s in sites:
             if not os.path.exists(folder_path+"/"+slots[idx][1]):
                 Path(folder_path+"/"+slots[idx][1]+"/").mkdir(parents=True, exist_ok=True)
             if not os.path.exists(folder_path+"/"+slots[idx][1]+"/"+f):
-                #print("MIN: ", np.amin(map[:, :, band])) # reflectance range between 0 - 255 
+                #print("MIN: ", np.amin(map[:, :, band])) 
                 #print("MAX: ", np.amax(map[:, :, band]))
-                b = np.clip(map[:, :, band], 0, 255)
+                b = np.clip(map[:, :, band], 0, 255) # reflectance range between 0 - 255 
                 b = b.astype(np.uint8)
                 im = Image.fromarray(b)
                 im.save(folder_path+"/"+slots[idx][1]+"/"+f)
@@ -313,7 +313,7 @@ for s in sites:
             start_time = time.time()
             cloud_prob = cloud_detector.get_cloud_probability_maps(bands)
             print(DEBUG_CLOUD_DETECTION+" Cloud probability detector took ", time.time() - start_time," for "+s,sites[s]," pic ", idx)
-            cloud_prob *= 255
+            cloud_prob = round(cloud_prob*255)
             cloud_prob = cloud_prob.astype(np.uint8)
             im = Image.fromarray(cloud_prob)
             im.save(folder_path+"/"+slots[idx][1]+"/cloud_prob.png")
@@ -325,7 +325,7 @@ for s in sites:
             start_time = time.time()
             cloud_mask = cloud_detector.get_cloud_masks(bands)
             print(DEBUG_CLOUD_DETECTION+" Cloud mask detector took ", time.time() - start_time," for "+s,sites[s]," pic ",idx)
-            cloud_mask *= 255
+            cloud_mask = round(cloud_mask*255)
             cloud_mask = cloud_mask.astype(np.uint8)            
             im = Image.fromarray(cloud_mask)
             im.save(folder_path+"/"+slots[idx][1]+"/cloud_mask.png")
