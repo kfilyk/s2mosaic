@@ -72,6 +72,16 @@ def range_0_256(band):
     band = band*255/max
     return band
 
+'''
+def convert_to_range(band, rmin, rmax):
+    min = np.amin(band)
+    #get diff between min, rmin
+    min_diff = rmin-min
+    band = band + min_diff
+    max = np.amax(band)
+    band = band*rmax/max
+    return band
+'''
 tile_path = "./tiles/accra_-0.2_5.4_0.2_5.6/"
 
 for date_dir_name in os.listdir(tile_path):
@@ -81,12 +91,6 @@ for date_dir_name in os.listdir(tile_path):
 
         #if date_dir_path != "./tiles/accra_-0.2_5.4_0.2_5.6/2021-08-17/": # uncommenting these two lines will result in only this tile being processed
         #    continue
-        
-
-        print(date_dir_path)
-        if os.path.isfile(date_dir_path+"clustered.png"):
-            continue
-
 
         # ------------------------- Add Bands Map For Cloud Detection 
 
@@ -112,40 +116,17 @@ for date_dir_name in os.listdir(tile_path):
 
         # ------------------------- Create Composite(s)
 
-        max_cloudiness = 0 # create a tuple of pixel coords indicating location of highest cloudiness
-        for row in range(0, clp.shape[0]):
-            for col in range(0, clp.shape[1]):
-                if clp[row, col] > max_cloudiness:
-                    max_cloudiness = clp[row, col]
-        print(max_cloudiness)
-
-        #composite = range_0_256(b01 * b09)
-        #composite = range_0_256(b10)
-
-
-        #composite = b09
-        #composite =range_0_256(b01 * b02) # get very white layer
-        #composite =range_0_256(composite - b09) # subtract cloud layer
-        #composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
-
-        #composite =range_0_256(composite - b09) # subtract cloud layer
-        #composite =range_0_256(composite * b04) # multiply with neutral cloud, bright building layer
-
-        #composite =range_0_256(b02 - composite) #
-        #composite =range_0_256(composite * b09)
+        max_clp = np.amax(clp) # create a tuple of pixel coords indicating location of highest cloudiness
+        min_clp = np.amin(clp) # create a tuple of pixel coords indicating location of lowest cloudiness
         
-        #layer = layer.astype(np.uint8)
-        #im = Image.fromarray(layer)
-        #im.save(date_dir_path+"layer.png")
-        #layer = layer.astype(np.float32)
-        
-
         # ------------------------- Add Bands 
 
         img = clp[:, :, np.newaxis]
-        img = np.insert(img, img.shape[2], b09, axis = 2) 
-        img = np.insert(img, img.shape[2], b01, axis = 2) 
-        #img = np.insert(img, img.shape[2], clp, axis = 2) 
+        #img = np.insert(img, img.shape[2], b09, axis = 2) 
+        #img = np.insert(img, img.shape[2], b01, axis = 2) 
+        img = np.insert(img, img.shape[2], clp, axis = 2) 
+        img = np.insert(img, img.shape[2], clp, axis = 2) 
+
         print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
 
         # ------------------------- Save Shape
@@ -154,19 +135,9 @@ for date_dir_name in os.listdir(tile_path):
 
         # ------------------------- Increase image range to 0, 255
 
-        for band in range(0, img.shape[2]):
-            img[:,:, band] = range_0_256(img[:,:, band])
-
-        # ------------------------- Blur Images
-
-        img = cv2.GaussianBlur(img, (15, 15), 0)
-        for band in range(0, img.shape[2]):
-            img[:,:, band] = range_0_256(img[:,:, band])
-
-        im = img.astype(np.uint8)
-        im = Image.fromarray(im[:, :, [2,1,0]])
-        im.save(date_dir_path+"blurred.png")
-
+        #for band in range(0, img.shape[2]):
+        #    img[:,:, band] = range_0_256(img[:,:, band])
+        
         # ------------------------- Denoise 
 
         img = img.astype(np.uint8)
@@ -184,13 +155,25 @@ for date_dir_name in os.listdir(tile_path):
         img = img2
         img = img.astype(np.float32)
 
-        for band in range(0, img.shape[2]):
-            img[:,:, band] = range_0_256(img[:,:, band])
+        #for band in range(0, img.shape[2]):
+        #    img[:,:, band] = range_0_256(img[:,:, band])
 
         im = img.astype(np.uint8)
         im = Image.fromarray(im[:, :, [2,1,0]])
         im.save(date_dir_path+"denoised.png")
 
+        # ------------------------- Blur Images
+
+        img = cv2.GaussianBlur(img, (15, 15), 0)
+
+        #for band in range(0, img.shape[2]):
+        #    img[:,:, band] = range_0_256(img[:,:, band])
+
+        im = img.astype(np.uint8)
+        im = Image.fromarray(im[:, :, [2,1,0]])
+        im.save(date_dir_path+"clp.png")
+
+        '''
         # ------------------------- Clustering through K-Means
 
         # re-shape to get 1D array for each layer (a*b, number of bands)
@@ -210,9 +193,11 @@ for date_dir_name in os.listdir(tile_path):
         img = res.reshape(og_shape)
         img = img.astype(np.float32)
 
+
         # ------------------------- Increase image range to 0, 255
-        for band in range(0, img.shape[2]):
-            img[:,:, band] = range_0_256(img[:,:, band])
+        
+        #for band in range(0, img.shape[2]):
+        #    img[:,:, band] = range_0_256(img[:,:, band])
 
         # ------------------------- Save cluster
 
@@ -222,7 +207,8 @@ for date_dir_name in os.listdir(tile_path):
 
         for band in range(1, img.shape[2]):
             grey += img[:, :, band]
-        grey = range_0_256(grey/img.shape[2])
+        #grey = range_0_256(grey/img.shape[2])
+        grey = grey/img.shape[2]
 
         grey = grey.astype(np.uint8)
         for i in range(0, grey.shape[0]):
@@ -232,7 +218,7 @@ for date_dir_name in os.listdir(tile_path):
         print(shades)
         im = Image.fromarray(grey)
         im.save(date_dir_path+"clustered.png")
-
+        '''
 # ------------------------- Mosaicing
 
 # TODO: also swap based on cloud probability, whoever has lowest cloud prob
@@ -240,18 +226,20 @@ for date_dir_name in os.listdir(tile_path):
 # Load in cloud mask from each day
 scl_imgs = {}
 rgb_imgs = {}
-cluster_imgs = {}
+#cluster_imgs = {}
+clp_imgs = {}
 clp_counts = {}
 # Load in cloud mask files and get cloud cover count for each image
 for date_dir in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir)): # ensure is a directory
         for file_name in os.listdir(tile_path+date_dir+"/"):
-            if file_name == "clustered.png":
+            if file_name == "clp.png":
                 #print(tile_path+date_dir+"/l1c_b09.png")
-                cluster_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/clustered.png")) # sub this in for cluster map later
-            elif file_name == "cloud_prob.png":
-                clp = np.array(Image.open(tile_path+date_dir+"/cloud_prob.png"))
-                clp_counts[tile_path+date_dir] = clp.sum() # Count number of pixels that is (probably) a cloud
+                clp_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/clp.png"))
+                clp_counts[tile_path+date_dir] = clp_imgs[tile_path+date_dir].sum() # Count number of pixels that is (probably) a cloud
+            #if file_name == "clustered.png":
+                #print(tile_path+date_dir+"/l1c_b09.png")
+                #cluster_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/clustered.png")) # sub this in for cluster map later
             elif file_name == "rgb.png":
                 #print(tile_path+date_dir+"/rgb.png")
                 rgb_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/rgb.png"))
@@ -260,15 +248,18 @@ for date_dir in os.listdir(tile_path):
                 scl_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/l2a_scl.png"))
 
 # Choose least cloudy image as base image
-print("CLP COUNTS: ", clp_counts)
-clp_counts = {k: v for k, v in sorted(clp_counts.items(), key=lambda item: item[1])}
-print("SORTED CLP COUNTS: ", clp_counts)
+#print("CLP COUNTS: ", clp_counts)
+clp_counts = {k: v for k, v in sorted(clp_counts.items(), key=lambda item: item[1])} # now sorted in order of least to most cloudy
+#print("SORTED CLP COUNTS: ", clp_counts)
 
  #{k: v for k, v in sorted(clp_counts.items(), key=lambda item: item[1])}
 least_cloudy_img_path = min(clp_counts, key=clp_counts.get)
 print("Least cloud image is: ", least_cloudy_img_path)
+print("Number of clp images: ", len(clp_imgs))
 
-# --------------------------------------------- Get composite SCL
+
+# --------------------------------------------- Create/get composite SCL (water/land classification)
+
 composite_scl = scl_imgs[least_cloudy_img_path] 
 
 if os.path.isfile(tile_path+"scl_composite.png"):
@@ -304,50 +295,20 @@ else:
     im = Image.fromarray(composite_scl)
     im.save(tile_path+"scl_composite.png")
 
-#  at this point we have an scl image from all other images (mostly) defining water and land
+# at this point we have an scl image from all other images (mostly) defining water and land
 
 # np.save("composite_scl", composite_scl)
 
-# --------------------------------------------- Create true cloud masks from cluster maps
-
-cloud_masks = {}
-
-print("Number of cluster images: ", len(cluster_imgs))
-for cl in cluster_imgs:
-
-    print(cl)
-    c = cluster_imgs[cl] # get a cluster image
-    shades = set() # top 5 shades in cluster are clouds; bottom 7 are land/water
-    for row in range(0, c.shape[0]):
-        for col in range(0, c.shape[1]):
-            shades.add(c[row, col])
-    print(len(shades))
-    shades = sorted(shades)
-
-    # return a cloud mask (over water)
-    for row in range(0, c.shape[0]):
-        for col in range(0, c.shape[1]):
-            # consider over land
-            if composite_scl[row, col] == 255 and c[row, col] >= shades[4]: # if as bright as #5 k-means region, is cloud
-                c[row, col] = 255 # mark as cloud
-            elif composite_scl[row, col] == 0 and c[row, col] >= 24: #over water
-                c[row, col] = 255 # mark as cloud
-            else:
-                c[row, col] = 0
-
-    cloud_masks[cl] = c # save cloud mask
-    Image.fromarray(c).show() # show composite scl image, which has pixels categorized mainly as water/land
-
 # ---------------------------------------------  Create true final RGB image
 
-composite_rgb = rgb_imgs[least_cloudy_img_path] # base image
-base_cloud_mask = cloud_masks[least_cloudy_img_path]
+composite_rgb = rgb_imgs[least_cloudy_img_path] # base rgb image
+composite_clp = clp_imgs[least_cloudy_img_path][:,:,0] # lowest cloud prob image
 # np.save("cloud_masks", cloud_masks)
 # np.save("composite_rgb", composite_rgb)
 # composite_rgb = np.load("composite_rgb.npy")
 # cloud_masks = np.load("cloud_masks.npy", allow_pickle=True)
 
-# ---------------------------------------------  Colour match other images to base image
+# ---------------------------------------------  stack CLPs; get lowest cloud prob pixels and overlay
 '''
 matched = {}
 idx = 0
@@ -358,24 +319,23 @@ for rgb_img in rgb_imgs:
         imsave(str(idx)+'_result.png', rgb_imgs[rgb_img])
         idx += 1
 '''
-
 # Loop through base image and start the mosaicing process!
-for i in range(0, base_cloud_mask.shape[0]):
-    for j in range(0, base_cloud_mask.shape[1]):
-        if base_cloud_mask[i,j] == 255: # Check if there is a cloud at this pixel of the base image
-            # See if other tiles have no cloud at same spot
-            print(least_cloudy_img_path)
-            for cm in clp_counts:
-                print(cm)
-                if cm == least_cloudy_img_path:
-                    continue
+print(composite_rgb.shape)
+for i in range(0, composite_rgb.shape[0]):
+    for j in range(0, composite_rgb.shape[1]):
+        # for each pixel, loop through clp images and find image with lowest cloud probability
+        for k in clp_counts: # for each clp image
+            if k == least_cloudy_img_path:
+                continue # skip self
 
-                if cm != least_cloudy_img_path and cloud_masks[cm][i,j] != 255:
-                    # Replace base image's pixel with none cloud pixel
-                    composite_rgb[i,j] = rgb_imgs[cm][i,j]
-                    break
+            if clp_imgs[k][i, j, 0] < composite_clp[i, j]: # Check if there is a cloud at this pixel of the base image
+                composite_clp[i, j] = clp_imgs[k][i, j, 0]
+                composite_rgb[i,j] = rgb_imgs[k][i, j]
+                break
 
+Image.fromarray(composite_clp).show()
 Image.fromarray(composite_rgb).show()
+
 
 # ------------------------- Edge detecting with Canny
 # using float here since np.nan requires floating points
