@@ -28,8 +28,7 @@ The image below is from a single tile using our composite method to define cloud
 
 <img src="/READMImages/rgb_quantized.png" width="400"/>
 
-
-The image below is a result from our first composite method version.
+The image below is a result from our first composite processing version.
 
 <img src="/READMImages/composite_v2.jpg" width="400"/>
 
@@ -38,6 +37,10 @@ Further refinement of our composition method saw us move away from S2Cloudless c
 The image below is a composite map detailing what parts of maps from different weeks were stitched together to create the final composite.
 
 <img src="/READMImages/composite_map.png" width="400"/>
+
+The image below is a result from our final composite processing version.
+
+<img src="/READMImages/composite_v2.png" width="400"/>
 
 ## How to use
 - Create your a trial account from SentinelHub and set them in the relevant client id, and secret field in get_maps.py
