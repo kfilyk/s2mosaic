@@ -10,60 +10,50 @@ from sklearn import preprocessing
 from sklearn.cluster import KMeans
 from ordered_set import OrderedSet
 from skimage.io import imread, imsave
-from skimage import exposure
+from skimage import data, exposure
 from skimage.exposure import match_histograms
 
 N_OPTICS_BANDS = 4
 
-def generate_histogram(img_name, img, do_print):
-    """
-    @params: img: can be a grayscale or color image. We calculate the Normalized histogram of this image.
-    @params: do_print: if or not print the result histogram
-    @return: will return both histogram and the grayscale image 
-    """
-    if len(img.shape) == 3: # img is colorful, so we convert it to grayscale
-        gr_img = np.mean(img, axis=-1)
-    else:
-        gr_img = img
-    '''now we calc grayscale histogram'''
-    gr_hist = np.zeros([256])
-
-    for x_pixel in range(gr_img.shape[0]):
-        for y_pixel in range(gr_img.shape[1]):
-            pixel_value = int(gr_img[x_pixel, y_pixel])
-            gr_hist[pixel_value] += 1
-            
-    '''normalizing the Histogram'''
-    gr_hist /= (gr_img.shape[0] * gr_img.shape[1])
-    if do_print:
-        print_histogram(gr_hist, name=img_name+"n_h_img", title="Normalized Histogram")
-    return gr_hist, gr_img
-  
-def print_histogram(_histrogram, name, title):
+def plot_histogram(histogram, title):
     plt.figure()
-    plt.title(title)
-    plt.plot(_histrogram, color='#ef476f')
-    plt.bar(np.arange(len(_histrogram)), _histrogram, color='#b7b7a4')
-    plt.ylabel('Number of Pixels')
-    plt.xlabel('Pixel Value')
-    plt.savefig("hist_" + name)
+    plt.title(title + " Normalized Histogram")
+    #ax = h.add_axes([0,0,1,1])
+    range = np.arange(256)
+    #plt.ylabel('Number of Pixels')
+    #plt.xlabel('Pixel Value')
+    #plt.show()
+    plt.bar(range, histogram[:,0], width = 1, fc=(1, 0, 0, 0.5), align='center')
+    plt.bar(range, histogram[:,1], width = 1, fc=(0, 1, 0, 0.5), align='center')
+    plt.bar(range, histogram[:,2], width = 1, fc=(0, 0, 1, 0.5), align='center')
+    #h.set_ylim([0, 1])
+    plt.show()
 
-def equalize_histogram(img, histo, L):
-    eq_histo = np.zeros_like(histo)
-    en_img = np.zeros_like(img)
-    for i in range(len(histo)):
-        eq_histo[i] = int((L - 1) * np.sum(histo[0:i]))
-    print_histogram(eq_histo, name="eq_"+str(index), title="Equalized Histogram")
-    '''enhance image as well:'''
-    for x_pixel in range(img.shape[0]):
-        for y_pixel in range(img.shape[1]):
-            pixel_val = int(img[x_pixel, y_pixel])
-            en_img[x_pixel, y_pixel] = eq_histo[pixel_val]
-    '''creating new histogram'''
-    hist_img, _ = generate_histogram(en_img, print=False, index=index)
-    print_img(img=en_img, histo_new=hist_img, histo_old=histo, index=str(index), L=L)
-    return eq_histo
+def match_histogram(chref, hist, title): 
+    # base: cumulative histogram of the reference base map sections of the composite
+    # hist: 
+    F = np.zeros_like(hist, dtype = float) # create an empty array with same size as base/ref 
+    i, j, c, ch = 0, 0, 0, 0
+    while ch < 3:
+        ch_ref_hist = chref[:, ch]
+        ch_hist = hist[:, ch]
+        n = np.sum(ch_hist) # get number of pixels contributing to the histo
 
+        r = n/max(ch_ref_hist)
+        while i in range(0, 256): # for each brightness value
+            if c <= r*ch_ref_hist[j]: # c measures the total number of pixels iterated over
+                c = c+ch_hist[i]
+                F[i, ch] = j
+                print(j)
+                i = i+1
+            else:
+                j = j+1
+        i = 0
+        j = 0
+        c = 0
+        ch = ch+1
+    plot_histogram(F, title+ " Matched")
+    return F
 
 def range_0_256(band):
     min = np.amin(band)
@@ -72,23 +62,11 @@ def range_0_256(band):
     band = band*255/max
     return band
 
-'''
-def convert_to_range(band, rmin, rmax):
-    min = np.amin(band)
-    #get diff between min, rmin
-    min_diff = rmin-min
-    band = band + min_diff
-    max = np.amax(band)
-    band = band*rmax/max
-    return band
-'''
 tile_path = "./tiles/accra_-0.2_5.4_0.2_5.6/"
 
 for date_dir_name in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir_name)): # ensure is a directory
-
         date_dir_path = tile_path+date_dir_name+"/" 
-
         #if date_dir_path != "./tiles/accra_-0.2_5.4_0.2_5.6/2021-08-17/": # uncommenting these two lines will result in only this tile being processed
         #    continue
 
@@ -121,11 +99,20 @@ for date_dir_name in os.listdir(tile_path):
         
         # ------------------------- Add Bands 
 
-        img = clp[:, :, np.newaxis]
-        #img = np.insert(img, img.shape[2], b09, axis = 2) 
+        #img = clp[:, :, np.newaxis]
+        #img = clp
+        img = b01
+        img = (img * (1+b09/255))
+        img = np.clip(img, 0, 255)
+        img = img+clp
+
+        #img = b01
+        #img = img + b09
+        img = img/2
         #img = np.insert(img, img.shape[2], b01, axis = 2) 
-        img = np.insert(img, img.shape[2], clp, axis = 2) 
-        img = np.insert(img, img.shape[2], clp, axis = 2) 
+        #img = np.insert(img, img.shape[2], b09, axis = 2) 
+        img = img.astype(np.uint8)
+        #im = Image.fromarray(img).show()
 
         print("SHAPE: ", img.shape) # make sure shape is (3, a, b) -> (b, a, 3), where 3 is RGB
 
@@ -133,14 +120,11 @@ for date_dir_name in os.listdir(tile_path):
 
         og_shape = img.shape
 
-        # ------------------------- Increase image range to 0, 255
-
-        #for band in range(0, img.shape[2]):
-        #    img[:,:, band] = range_0_256(img[:,:, band])
-        
         # ------------------------- Denoise 
 
         img = img.astype(np.uint8)
+        img = cv2.fastNlMeansDenoising(img, None, 30, 21, 7)
+        '''
         img2 = cv2.fastNlMeansDenoisingColored(img[:,:,0:3], None, 10, 30, 21, 7)
         if img.shape[2]>=4:
             alpha = cv2.fastNlMeansDenoising(img[:,:,3], None, 30, 21, 7)
@@ -153,13 +137,9 @@ for date_dir_name in os.listdir(tile_path):
             img2= np.insert(img2, 5, alpha, axis = 2) # insert b09 band to alpha layer
 
         img = img2
-        img = img.astype(np.float32)
-
-        #for band in range(0, img.shape[2]):
-        #    img[:,:, band] = range_0_256(img[:,:, band])
-
-        im = img.astype(np.uint8)
-        im = Image.fromarray(im[:, :, [2,1,0]])
+        '''
+        im = Image.fromarray(img)
+        #im = Image.fromarray(img[:, :, [2,1,0]])
         im.save(date_dir_path+"denoised.png")
 
         # ------------------------- Blur Images
@@ -170,7 +150,9 @@ for date_dir_name in os.listdir(tile_path):
         #    img[:,:, band] = range_0_256(img[:,:, band])
 
         im = img.astype(np.uint8)
-        im = Image.fromarray(im[:, :, [2,1,0]])
+        #im = Image.fromarray(im[:, :, [2,1,0]])
+        im = Image.fromarray(im)
+
         im.save(date_dir_path+"clp.png")
 
         '''
@@ -229,6 +211,8 @@ rgb_imgs = {}
 #cluster_imgs = {}
 clp_imgs = {}
 clp_counts = {}
+histograms = {}
+c_histograms = {}
 # Load in cloud mask files and get cloud cover count for each image
 for date_dir in os.listdir(tile_path):
     if os.path.isdir(os.path.join(tile_path, date_dir)): # ensure is a directory
@@ -236,6 +220,7 @@ for date_dir in os.listdir(tile_path):
             if file_name == "clp.png":
                 #print(tile_path+date_dir+"/l1c_b09.png")
                 clp_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/clp.png"))
+
                 clp_counts[tile_path+date_dir] = clp_imgs[tile_path+date_dir].sum() # Count number of pixels that is (probably) a cloud
             #if file_name == "clustered.png":
                 #print(tile_path+date_dir+"/l1c_b09.png")
@@ -246,6 +231,9 @@ for date_dir in os.listdir(tile_path):
             elif file_name == "l2a_scl.png":
                 #print(tile_path+date_dir+"/l2a_scl.png")
                 scl_imgs[tile_path+date_dir] = np.array(Image.open(tile_path+date_dir+"/l2a_scl.png"))
+            histograms[tile_path+date_dir] = np.zeros((256, 3)) # one for each of R, G, B
+            c_histograms[tile_path+date_dir] = np.zeros((256, 3), dtype = float) # one for each of R, G, B
+
 
 # Choose least cloudy image as base image
 #print("CLP COUNTS: ", clp_counts)
@@ -301,40 +289,110 @@ else:
 
 # ---------------------------------------------  Create true final RGB image
 
-composite_rgb = rgb_imgs[least_cloudy_img_path] # base rgb image
-composite_clp = clp_imgs[least_cloudy_img_path][:,:,0] # lowest cloud prob image
+composite_rgb = rgb_imgs[least_cloudy_img_path].copy() # base rgb image
+composite_clp = clp_imgs[least_cloudy_img_path][:,:] # lowest cloud prob image
+composite_map = np.zeros(composite_clp.shape, dtype=int) # lowest cloud prob image - fill with zeros indicating base layer
+
 # np.save("cloud_masks", cloud_masks)
 # np.save("composite_rgb", composite_rgb)
 # composite_rgb = np.load("composite_rgb.npy")
 # cloud_masks = np.load("cloud_masks.npy", allow_pickle=True)
 
 # ---------------------------------------------  stack CLPs; get lowest cloud prob pixels and overlay
-'''
-matched = {}
-idx = 0
-for rgb_img in rgb_imgs:
-    # Match using the right side as reference
-    if rgb_img != least_cloudy_img_path:
-        rgb_imgs[rgb_img] = match_histograms(rgb_imgs[rgb_img], composite_rgb, multichannel=True)
-        imsave(str(idx)+'_result.png', rgb_imgs[rgb_img])
-        idx += 1
-'''
+#Image.fromarray(rgb_imgs[least_cloudy_img_path]).show()
+
+# store histograms of only pixel values that are actually used in final composite
 # Loop through base image and start the mosaicing process!
-print(composite_rgb.shape)
-for i in range(0, composite_rgb.shape[0]):
-    for j in range(0, composite_rgb.shape[1]):
-        # for each pixel, loop through clp images and find image with lowest cloud probability
-        for k in clp_counts: # for each clp image
+keys = list(clp_counts.keys())
+print(keys)
+#print(clp_counts)
+#print(composite_rgb.shape)
+for i in range(0, composite_rgb.shape[0]): 
+    for j in range(0, composite_rgb.shape[1]): # for each pixel
+        for idx, k in enumerate(clp_counts): # for each clp image in order of lowest cloud probability
+            #print(k)
             if k == least_cloudy_img_path:
                 continue # skip self
+            #print("%d, %d" % (clp_imgs[k][i, j], composite_clp[i, j]))
+            if clp_imgs[k][i, j] < composite_clp[i, j]: # Check if there is a cloud at this pixel of the base image
+                composite_clp[i, j] = clp_imgs[k][i, j] # fill in the clp composite
+                composite_map[i, j] = idx # paint new colour indicative as originating from a map w/ a given index
+                composite_rgb[i, j] = rgb_imgs[k][i, j]
+                break #try this again after fixing cloud_prob layer detection?
 
-            if clp_imgs[k][i, j, 0] < composite_clp[i, j]: # Check if there is a cloud at this pixel of the base image
-                composite_clp[i, j] = clp_imgs[k][i, j, 0]
-                composite_rgb[i,j] = rgb_imgs[k][i, j]
-                break
+'''
+# now count histograms for pixels of composite
+for i in range(0, composite_rgb.shape[0]): 
+    for j in range(0, composite_rgb.shape[1]): # for each pixel
+        m = keys[composite_map[i, j]]
+        histograms[m][composite_rgb[i, j, 0], 0] += 1 # add pixel from non composite
+        histograms[m][composite_rgb[i, j, 1], 1] += 1
+        histograms[m][composite_rgb[i, j, 2], 2] += 1
+
+# at this point we have our true composite img and the individual sections that define the composite. Now create normalized cumulative histograms based on the sections
+for h in histograms:
+    c_hist = histograms[h].copy()
+    for ch in range(0,3):
+        sum = 0
+        total = np.sum(c_hist[:, ch]) # s should be the same count for all r,g,b histos
+        if total != 0:
+            for i in range(0, 256):
+                sum = sum + c_hist[i, ch]
+                c_hist[i, ch] = sum/total # normalization step
+    #plot_histogram(c_hist, h)
+    c_histograms[h] = c_hist
+'''
+
+# hard limit of 255 maps contributing to a single composite (for now)
+num_maps = len(clp_counts)
+print(num_maps)
+
+composite_map_img = composite_map * 255/num_maps
+#composite_map = np.uint8(composite_map)
+Image.fromarray(composite_map_img).show()
+
+# count frequency of clp_map values
+clp_map_counts = [0] * num_maps
+for i in range(0, composite_map.shape[0]): 
+    for j in range(0, composite_map.shape[1]): 
+        clp_map_counts[composite_map[i,j]] += 1 # find most prevalent maps contributing to composite
+
+# determine base histogram
+print(clp_map_counts) 
+max_map_count = max(clp_map_counts)
+#base_histogram = clp_map_counts.index(max_map_count) #  index of what will be our reference histogram
+#print("BASE: ", base_histogram)
+
+#Image.fromarray(composite_rgb).show()
+# match other map histogram channels to normalized base histogram channels
+
+'''
+for map_idx, h in enumerate(histograms):
+    if h != keys[base_histogram]: # for every histogram that isn't the base: match to the base
+        #print(histograms[keys[base_histogram]])
+        F = match_histogram(c_histograms[keys[base_histogram]], histograms[h], h) # pass in c_hist of reference, hist of img to be modded
+        print("MATCHED")
+        for ch in range(0, composite_rgb.shape[2]):
+            for i in range(0, composite_rgb.shape[0]):
+                for j in range(0, composite_rgb.shape[1]):
+                    if composite_map[i, j] == map_idx: # Manipulate only the pixels belonging to a non-base map; change all pixels with value h to value b
+                            composite_rgb[i, j, ch] = F[composite_rgb[i, j, ch], ch]
+        print("COMPOSED")
+
+        Image.fromarray(composite_rgb).show()
+
+'''
+
+#print(histograms[least_cloudy_img_path])
+
+composite_rgb = composite_rgb.astype(np.float32)
+for band in range(0, composite_rgb.shape[2]):
+    composite_rgb[:,:,band] = range_0_256(composite_rgb[:,:,band])
+composite_rgb = composite_rgb.astype(np.uint8)
 
 Image.fromarray(composite_clp).show()
-Image.fromarray(composite_rgb).show()
+rgb_img = Image.fromarray(composite_rgb[:,:,[0,1,2]])
+rgb_img.show()
 
 
 # ------------------------- Edge detecting with Canny
