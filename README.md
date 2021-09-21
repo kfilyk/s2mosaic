@@ -40,7 +40,7 @@ The image below is a composite map detailing what parts of maps from different w
 
 The image below is a result from our final composite processing version.
 
-<img src="/READMImages/composite_v2.png" width="400"/>
+<img src="/READMImages/composite_v5.png" width="400"/>
 
 ## How to use
 - Create your a trial account from SentinelHub and set them in the relevant client id, and secret field in get_maps.py
